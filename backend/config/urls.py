@@ -14,7 +14,16 @@ admin.site.site_header = "Travel Booking System Administration"
 admin.site.site_title = "Travel Booking Admin"
 admin.site.index_title = "Manage destinations, packages, bookings, payments & reviews"
 
+from django.http import JsonResponse
+
+def api_root_view(request):
+    return JsonResponse({
+        "message": "Welcome to the Travel Booking System API!",
+        "status": "active"
+    })
+
 urlpatterns = [
+    path("", api_root_view, name="api-root"),
     path("admin/", admin.site.urls),
 
     # Auth / user management (accounts app)
