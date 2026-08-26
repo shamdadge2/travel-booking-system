@@ -1,0 +1,57 @@
+.auth-page {
+  min-height: calc(100vh - 68px - 250px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2xl) var(--space-lg);
+  background-color: var(--color-bg-alt);
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 420px;
+  padding: var(--space-xl);
+}
+
+.auth-card h1 {
+  font-size: var(--font-size-xl);
+  text-align: center;
+}
+
+.auth-card__subtitle {
+  text-align: center;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-lg);
+}
+
+.auth-card__footer {
+  text-align: center;
+  margin-top: var(--space-md);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.auth-card__divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  color: var(--color-text-light);
+  font-size: var(--font-size-sm);
+  margin: var(--space-lg) 0;
+}
+
+.auth-card__divider::before,
+.auth-card__divider::after {
+  content: "";
+  flex: 1;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.auth-card__divider span {
+  padding: 0 var(--space-md);
+}
+
+.auth-card__google {
+  display: flex;
+  justify-content: center;
+}

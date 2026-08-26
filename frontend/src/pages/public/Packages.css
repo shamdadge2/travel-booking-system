@@ -1,0 +1,16 @@
+.packages-toolbar {
+  display: flex;
+  gap: var(--space-md);
+  margin-bottom: var(--space-lg);
+  flex-wrap: wrap;
+}
+
+.packages-toolbar .form-input {
+  flex: 2;
+  min-width: 220px;
+}
+
+.packages-toolbar .form-select {
+  flex: 1;
+  min-width: 160px;
+}

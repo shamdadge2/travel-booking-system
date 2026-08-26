@@ -1,0 +1,42 @@
+.social-icons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+}
+
+.social-icons__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--font-size-sm);
+  text-decoration: none;
+}
+
+.social-icons__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+}
+
+.social-icons__icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* Dark variant — for use on the dark footer background */
+.social-icons--dark .social-icons__link {
+  color: #9ca3af;
+}
+.social-icons--dark .social-icons__link:hover {
+  color: #fff;
+}
+
+/* Light variant — for use on white/light page backgrounds (About Us) */
+.social-icons--light .social-icons__link {
+  color: var(--color-text-muted);
+}
+.social-icons--light .social-icons__link:hover {
+  color: var(--color-primary);
+}

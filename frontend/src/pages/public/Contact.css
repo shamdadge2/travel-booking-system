@@ -1,0 +1,30 @@
+.contact-page {
+  padding-bottom: var(--space-2xl);
+}
+
+.contact-page__grid {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: var(--space-lg);
+}
+
+.contact-page__info,
+.contact-page__form-wrap {
+  padding: var(--space-lg);
+}
+
+.contact-page__info p {
+  color: var(--color-text-muted);
+}
+
+.contact-page__note {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-light);
+  margin-top: var(--space-md);
+}
+
+@media (max-width: 760px) {
+  .contact-page__grid {
+    grid-template-columns: 1fr;
+  }
+}

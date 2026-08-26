@@ -1,0 +1,24 @@
+.profile-page {
+  padding-bottom: var(--space-2xl);
+  max-width: 640px;
+}
+
+.profile-page__card {
+  padding: var(--space-lg);
+  margin-bottom: var(--space-lg);
+}
+
+.profile-page__saved {
+  display: inline-block;
+  margin-bottom: var(--space-md);
+}
+
+.profile-page__actions {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.profile-page__hint {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}

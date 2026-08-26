@@ -1,0 +1,42 @@
+.user-itinerary {
+  padding-bottom: var(--space-2xl);
+  max-width: 720px;
+}
+
+.user-itinerary .itinerary-timeline {
+  list-style: none;
+  padding: 0;
+  margin: var(--space-lg) 0 0;
+  border-left: 2px solid var(--color-border);
+}
+
+.user-itinerary .itinerary-timeline li {
+  display: flex;
+  gap: var(--space-md);
+  padding: 0 0 var(--space-lg) var(--space-lg);
+  position: relative;
+}
+
+.user-itinerary .itinerary-timeline li::before {
+  content: "";
+  position: absolute;
+  left: -7px;
+  top: 4px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: var(--color-primary);
+}
+
+.user-itinerary .itinerary-timeline__day {
+  flex-shrink: 0;
+  font-weight: 700;
+  color: var(--color-primary);
+  min-width: 64px;
+}
+
+.user-itinerary .itinerary-timeline p {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  margin-bottom: 2px;
+}
