@@ -1,7 +1,15 @@
 import axios from "axios";
 import { getAccessToken, getRefreshToken, setTokens, clearTokens } from "./tokenStorage";
 
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000/api";
+function normalizeApiBaseUrl(raw) {
+  if (!raw || !raw.trim()) return "http://127.0.0.1:8000/api";
+  let url = raw.trim().replace(/\/+$/, "");
+  // If user set https://host without /api, auto-append. Keeps /api/auth etc intact.
+  if (!url.endsWith("/api")) url += "/api";
+  return url;
+}
+
+export const API_BASE_URL = normalizeApiBaseUrl(import.meta.env.VITE_API_BASE_URL);
 
 const api = axios.create({
   baseURL: API_BASE_URL,

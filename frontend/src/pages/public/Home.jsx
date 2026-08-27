@@ -4,6 +4,7 @@ import destinationApi from "../../api/destinationApi";
 import packageApi from "../../api/packageApi";
 import { formatCurrency } from "../../utils/formatters";
 import Loader from "../../components/Loader";
+import { API_BASE_URL } from "../../api/axios";
 import "./Home.css";
 
 export default function Home() {
@@ -49,11 +50,14 @@ export default function Home() {
       if (destResult.status === "rejected" && pkgResult.status === "rejected") {
         const isNetworkError =
           !destResult.reason?.response && !pkgResult.reason?.response;
-        setError(
-          isNetworkError
-            ? "Backend is not reachable at 127.0.0.1:8000 — make sure Django is running (python manage.py runserver)."
-            : "Couldn't load the homepage right now. Please refresh."
-        );
+        const status = destResult.reason?.response?.status || pkgResult.reason?.response?.status;
+        if (isNetworkError) {
+          setError(`Backend is not reachable at ${API_BASE_URL} — the Render free instance may be waking up (wait ~30s) or VITE_API_BASE_URL is misconfigured.`);
+        } else if (status === 404) {
+          setError(`API returned 404 at ${API_BASE_URL}. Check that VITE_API_BASE_URL ends with /api (e.g. https://travel-booking-system-1-tsta.onrender.com/api).`);
+        } else {
+          setError("Couldn't load the homepage right now. Please refresh.");
+        }
       }
     }).finally(() => setIsLoading(false));
   }, []);
@@ -128,7 +132,7 @@ export default function Home() {
               {pkgError ? (
                 <div className="home-error">
                   <p className="home-error__title">Couldn't load featured packages</p>
-                  <p className="home-error__msg">{pkgError} Is the API running at {import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000/api"}?</p>
+                  <p className="home-error__msg">{pkgError} Is the API running at {API_BASE_URL}?</p>
                   <button className="btn btn-outline" onClick={() => window.location.reload()} style={{ marginTop: 12 }}>Retry</button>
                 </div>
               ) : featuredPackages.length === 0 ? (

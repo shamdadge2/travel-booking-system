@@ -283,9 +283,13 @@ GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
 # ------------------------------------------------------------------
 CORS_ALLOWED_ORIGINS = env_list(
     "CORS_ALLOWED_ORIGINS",
-    "http://localhost:5173,http://127.0.0.1:5173",
+    "http://localhost:5173,http://127.0.0.1:5173,https://travelbookingsystem-one.vercel.app,https://travel-booking-system-1-tsta.onrender.com",
 )
 CORS_ALLOW_CREDENTIALS = True
+# Allow Vercel preview deployments (*-*.vercel.app) without listing each one
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^https://.*\.vercel\.app$",
+]
 
 
 # ------------------------------------------------------------------
