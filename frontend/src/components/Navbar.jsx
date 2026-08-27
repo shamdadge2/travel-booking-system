@@ -1,26 +1,28 @@
-import { Link, NavLink } from "react-router-dom";
+import { Link, NavLink, useLocation } from "react-router-dom";
 import useAuth from "../hooks/useAuth";
 import "./Navbar.css";
 
 export default function Navbar() {
   const { isAuthenticated, isStaffOrAdmin, user, logout } = useAuth();
+  const location = useLocation();
+  const isHome = location.pathname === "/";
 
   return (
-    <header className="navbar">
+    <header className={`navbar ${isHome ? 'navbar--transparent' : ''}`}>
       <div className="container navbar__inner">
         <Link to="/" className="navbar__brand">
           Travel<span>Booking</span>
         </Link>
 
         <nav className="navbar__links">
+          <NavLink to="/" className="navbar__link">
+            Home
+          </NavLink>
           <NavLink to="/destinations" className="navbar__link">
             Destinations
           </NavLink>
           <NavLink to="/packages" className="navbar__link">
-            Packages
-          </NavLink>
-          <NavLink to="/about" className="navbar__link">
-            About
+            Trips
           </NavLink>
           <NavLink to="/contact" className="navbar__link">
             Contact
@@ -31,7 +33,7 @@ export default function Navbar() {
           {isAuthenticated ? (
             <>
               {isStaffOrAdmin && (
-                <Link to="/admin" className="btn btn-outline navbar__btn">
+                <Link to="/admin" className="btn navbar__btn-admin">
                   Admin
                 </Link>
               )}
@@ -41,7 +43,7 @@ export default function Navbar() {
               <Link to="/profile" className="navbar__link">
                 {user?.username || "Profile"}
               </Link>
-              <button className="btn btn-outline navbar__btn" onClick={logout}>
+              <button className="btn navbar__btn-logout" onClick={logout}>
                 Logout
               </button>
             </>
@@ -50,7 +52,7 @@ export default function Navbar() {
               <Link to="/login" className="navbar__link">
                 Login
               </Link>
-              <Link to="/register" className="btn btn-primary navbar__btn">
+              <Link to="/register" className="btn navbar__btn-signup">
                 Sign Up
               </Link>
             </>

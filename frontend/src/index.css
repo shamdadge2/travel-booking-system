@@ -264,6 +264,33 @@ button, input, textarea, select {
   padding: var(--space-xl) 0;
 }
 
+/* Listing grids for Packages / Destinations / Search */
+.grid {
+  display: grid;
+  gap: var(--space-lg);
+}
+.grid--packages {
+  grid-template-columns: repeat(3, 1fr);
+}
+.grid--destinations {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+@media (max-width: 1100px) {
+  .grid--packages {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .grid--destinations {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+@media (max-width: 640px) {
+  .grid--packages,
+  .grid--destinations {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 640px) {
   .form-row {
     flex-direction: column;
