@@ -47,5 +47,6 @@ urlpatterns = [
     path("api/contact/", include("contact.urls")),
 ]
 
-if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+# Serve uploaded media even in production (Render free has ephemeral FS but fine for demo)
+# DEBUG check removed because DEBUG=False on Render would otherwise 404 all /media/ image requests
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
