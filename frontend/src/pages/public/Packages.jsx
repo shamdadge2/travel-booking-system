@@ -40,50 +40,93 @@ export default function Packages() {
   }, [search, type, sort]);
 
   return (
-    <div className="container">
-      <div className="page-header">
-        <h1>Tour Packages</h1>
-        <p>Find the perfect trip, filtered by type and budget.</p>
-      </div>
+    <div className="pkg-page">
+      {/* Hero - matches homepage + destinations */}
+      <section className="pkg-hero">
+        <div className="pkg-hero__bg" aria-hidden="true" />
+        <div className="pkg-hero__overlay" aria-hidden="true" />
+        <div className="container pkg-hero__inner">
+          <div className="pkg-hero__content">
+            <span className="pkg-hero__eyebrow">CURATED TRIPS</span>
+            <h1 className="pkg-hero__title">Explore Amazing Trips</h1>
+            <p className="pkg-hero__desc">
+              Find the perfect trip, filtered by type and budget — adventure, honeymoon, family and more.
+            </p>
+            <div className="pkg-hero__filters">
+              <div className="pkg-hero__search">
+                <svg className="pkg-hero__search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+                  <circle cx="11" cy="11" r="7" />
+                  <path d="M20 20l-3.5-3.5" />
+                </svg>
+                <input
+                  type="text"
+                  className="pkg-hero__input"
+                  placeholder="Search packages..."
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                />
+                {search && (
+                  <button type="button" className="pkg-hero__clear" onClick={() => setSearch("")} aria-label="Clear search">✕</button>
+                )}
+              </div>
 
-      <div className="packages-toolbar">
-        <input
-          type="text"
-          className="form-input"
-          placeholder="Search packages..."
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-        />
+              <div className="pkg-hero__selects">
+                <select className="pkg-hero__select" value={type} onChange={(event) => setType(event.target.value)}>
+                  <option value="">All Types</option>
+                  {PACKAGE_TYPES.map((t) => (
+                    <option key={t} value={t}>
+                      {t.charAt(0).toUpperCase() + t.slice(1)}
+                    </option>
+                  ))}
+                </select>
 
-        <select className="form-select" value={type} onChange={(event) => setType(event.target.value)}>
-          <option value="">All Types</option>
-          {PACKAGE_TYPES.map((t) => (
-            <option key={t} value={t}>
-              {t.charAt(0).toUpperCase() + t.slice(1)}
-            </option>
-          ))}
-        </select>
-
-        <select className="form-select" value={sort} onChange={(event) => setSort(event.target.value)}>
-          <option value="">Sort by</option>
-          <option value="price_asc">Price: Low to High</option>
-          <option value="price_desc">Price: High to Low</option>
-        </select>
-      </div>
-
-      {isLoading ? (
-        <Loader label="Loading packages..." />
-      ) : error ? (
-        <EmptyState tone="error" title="Something went wrong" message={error} />
-      ) : packages.length === 0 ? (
-        <EmptyState title="No packages found" message="Try adjusting your search or filters." />
-      ) : (
-        <div className="grid grid--packages">
-          {packages.map((pkg) => (
-            <PackageCard key={pkg.id} pkg={pkg} />
-          ))}
+                <select className="pkg-hero__select" value={sort} onChange={(event) => setSort(event.target.value)}>
+                  <option value="">Sort by</option>
+                  <option value="price_asc">Price: Low to High</option>
+                  <option value="price_desc">Price: High to Low</option>
+                </select>
+              </div>
+            </div>
+          </div>
         </div>
-      )}
+      </section>
+
+      {/* Content - grid untouched */}
+      <section className="pkg-content">
+        <div className="container">
+          {!isLoading && !error && packages.length > 0 && (
+            <div className="pkg-content__head">
+              <p className="pkg-content__count">
+                Showing <strong>{packages.length}</strong> trip{packages.length !== 1 ? "s" : ""}
+                {type ? <> · {type}</> : null}
+              </p>
+              {(search || type || sort) && (
+                <button
+                  type="button"
+                  className="pkg-content__reset"
+                  onClick={() => { setSearch(""); setType(""); setSort(""); }}
+                >
+                  Clear filters
+                </button>
+              )}
+            </div>
+          )}
+
+          {isLoading ? (
+            <Loader label="Loading packages..." />
+          ) : error ? (
+            <EmptyState tone="error" title="Something went wrong" message={error} />
+          ) : packages.length === 0 ? (
+            <EmptyState title="No packages found" message="Try adjusting your search or filters." />
+          ) : (
+            <div className="grid grid--packages">
+              {packages.map((pkg) => (
+                <PackageCard key={pkg.id} pkg={pkg} />
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
     </div>
   );
 }
