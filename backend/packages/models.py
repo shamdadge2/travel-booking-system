@@ -7,11 +7,12 @@ from destinations.models import Destination
 
 
 def package_featured_image_path(instance, filename):
-    return f"packages/{instance.id or 'new'}/featured/{filename}"
+    # Stable path without id to avoid 'new' folder on first save (Render ephemeral FS)
+    return f"packages/featured/{filename}"
 
 
 def package_gallery_image_path(instance, filename):
-    return f"packages/{instance.package_id}/gallery/{filename}"
+    return f"packages/gallery/{filename}"
 
 
 class TourPackage(models.Model):

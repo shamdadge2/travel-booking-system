@@ -3,7 +3,7 @@ from django.db import models
 
 
 def destination_image_upload_path(instance, filename):
-    return f"destinations/{instance.id or 'new'}/{filename}"
+    return f"destinations/{filename}"
 
 
 class Destination(models.Model):
