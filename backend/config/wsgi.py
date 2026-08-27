@@ -37,3 +37,36 @@ try:
 except Exception:
     # DB not ready during collectstatic or migrations — ignore
     pass
+
+# Auto-seed missing media files on ephemeral Render disk
+# DB persists but /media/ is wiped on every deploy/restart → re-download a fallback
+try:
+    from django.core.files.base import ContentFile
+    import requests
+
+    from packages.models import TourPackage
+    from destinations.models import Destination
+
+    # Seed package 1 featured image if missing on disk
+    try:
+        pkg = TourPackage.objects.filter(id=1).first()
+        if pkg and (not pkg.featured_image or not pkg.featured_image.storage.exists(pkg.featured_image.name)):
+            url = "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?auto=format&fit=crop&w=800&q=80"
+            r = requests.get(url, timeout=15)
+            if r.ok:
+                pkg.featured_image.save("ladakh-featured.jpg", ContentFile(r.content), save=True)
+    except Exception:
+        pass
+
+    # Seed destination 1 image if missing
+    try:
+        dest = Destination.objects.filter(id=1).first()
+        if dest and (not dest.image or not dest.image.storage.exists(dest.image.name)):
+            url = "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80"
+            r = requests.get(url, timeout=15)
+            if r.ok:
+                dest.image.save("ladakh.jpg", ContentFile(r.content), save=True)
+    except Exception:
+        pass
+except Exception:
+    pass
