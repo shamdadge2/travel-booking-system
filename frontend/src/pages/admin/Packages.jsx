@@ -254,8 +254,11 @@ function ImagesManager({ pkgId, images, onChange }) {
       setPlaceName("");
       setCaption("");
       event.target.reset();
-    } catch {
-      setError("Couldn't upload this image.");
+    } catch (err) {
+      const d = err.response?.data;
+      const msg = d ? (typeof d === "string" ? d : Object.values(d).flat().join(" ") || JSON.stringify(d)) : err.message;
+      setError(msg || "Couldn't upload this image.");
+      console.error("addImage failed", d || err);
     } finally {
       setUploading(false);
     }
@@ -265,8 +268,11 @@ function ImagesManager({ pkgId, images, onChange }) {
     try {
       await packageApi.removeImage(imageId);
       onChange(images.filter((img) => img.id !== imageId));
-    } catch {
-      setError("Couldn't remove this image.");
+    } catch (err) {
+      const d = err.response?.data;
+      const msg = d ? (typeof d === "string" ? d : Object.values(d).flat().join(" ") || JSON.stringify(d)) : err.message;
+      setError(msg || "Couldn't remove this image.");
+      console.error("removeImage failed", d || err);
     }
   };
 
