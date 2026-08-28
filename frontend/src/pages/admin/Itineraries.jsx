@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Loader from "../../components/Loader";
 import EmptyState from "../../components/EmptyState";
 import packageApi from "../../api/packageApi";
@@ -7,6 +7,118 @@ import "./AdminTable.css";
 import "./AdminForm.css";
 
 const EMPTY_FORM = { day_number: "", title: "", location: "", meals: "", accommodation: "", description: "", activities: "" };
+
+const ITINERARY_IMPORT_TEMPLATE = `{
+  "day_number": 1,
+  "title": "Arrival in Leh",
+  "location": "Leh",
+  "meals": "Dinner",
+  "accommodation": "Hotel, Leh",
+  "description": "Arrive at Leh airport and acclimatize.",
+  "activities": "Airport pickup, evening market walk"
+}
+// Or paste an array to create multiple days at once:
+[
+  { "day_number": 1, "title": "Arrival", "location": "Leh" },
+  { "day_number": 2, "title": "Leh to Nubra Valley", "location": "Nubra Valley", "meals": "Breakfast, Dinner" }
+]`;
+
+function ItineraryJsonImportPanel({ onImportSingle, onImportBulk, selectedPackageId }) {
+  const [text, setText] = useState("");
+  const [error, setError] = useState("");
+  const [showTemplate, setShowTemplate] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const applyJson = async (jsonText) => {
+    setError("");
+    let data;
+    try {
+      data = JSON.parse(jsonText);
+    } catch {
+      setError("That doesn't look like valid JSON — check for missing commas/quotes and try again.");
+      return;
+    }
+    if (Array.isArray(data)) {
+      if (!selectedPackageId) {
+        setError("Select a package first before bulk importing.");
+        return;
+      }
+      if (data.length === 0) {
+        setError("Array is empty.");
+        return;
+      }
+      setImporting(true);
+      let created = 0;
+      let lastErr = "";
+      for (const entry of data) {
+        try {
+          await itineraryApi.createForPackage(selectedPackageId, { ...entry, day_number: Number(entry.day_number) });
+          created++;
+        } catch (err) {
+          const d = err.response?.data;
+          const m = d && typeof d === "object" ? Object.values(d)[0] : null;
+          lastErr = (Array.isArray(m) ? m[0] : m) || err.message || "Unknown error";
+        }
+      }
+      setImporting(false);
+      if (created > 0) {
+        onImportBulk(created, lastErr);
+        setText("");
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        if (lastErr && created < data.length) setError(`${created}/${data.length} days imported. Last error: ${lastErr}`);
+      } else {
+        setError(lastErr || "Couldn't import any days.");
+      }
+      return;
+    }
+    // Single object -> fill the form for review before saving.
+    onImportSingle(data);
+    setText("");
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleFileChange = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => applyJson(e.target.result);
+    reader.readAsText(file);
+  };
+
+  return (
+    <div className="json-import">
+      <div className="json-import__header">
+        <h4>Import from JSON (optional)</h4>
+        <button type="button" className="json-import__toggle" onClick={() => setShowTemplate(!showTemplate)}>
+          {showTemplate ? "Hide" : "Show"} example format
+        </button>
+      </div>
+      <p className="admin-form__note">
+        Generate itinerary days with ChatGPT (or any AI tool) using the format below, then paste or upload the result here. For a single day it fills the form for you to review; for an array it creates all days at once for the selected package.
+      </p>
+
+      {showTemplate && <pre className="json-import__template">{ITINERARY_IMPORT_TEMPLATE}</pre>}
+
+      {error && <p className="form-error">{error}</p>}
+
+      <textarea
+        className="form-textarea json-import__textarea"
+        rows="4"
+        placeholder="Paste JSON here... (single day object or array of days)"
+        value={text}
+        onChange={(event) => setText(event.target.value)}
+      />
+      <div className="json-import__actions">
+        <button type="button" className="btn btn-outline" onClick={() => applyJson(text)} disabled={!text.trim() || importing}>
+          {importing ? "Importing..." : "Load Pasted JSON"}
+        </button>
+        <span className="json-import__or">or</span>
+        <input ref={fileInputRef} type="file" accept=".json,application/json" onChange={handleFileChange} disabled={importing} />
+      </div>
+    </div>
+  );
+}
 
 export default function AdminItineraries() {
   const [packages, setPackages] = useState([]);
@@ -122,6 +234,26 @@ export default function AdminItineraries() {
         )}
       </div>
 
+      <ItineraryJsonImportPanel
+        onImportSingle={(data) => {
+          setFormData({
+            day_number: data.day_number ?? "",
+            title: data.title ?? "",
+            location: data.location ?? "",
+            meals: data.meals ?? "",
+            accommodation: data.accommodation ?? "",
+            description: data.description ?? "",
+            activities: data.activities ?? "",
+          });
+          setEditingId(null);
+          setFormError("");
+          setShowForm(true);
+        }}
+        onImportBulk={(count) => {
+          loadDays();
+        }}
+        selectedPackageId={selectedPackageId}
+      />
       {showForm && (
         <form className="card admin-form" onSubmit={handleSubmit}>
           {formError && <p className="form-error">{formError}</p>}

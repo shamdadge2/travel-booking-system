@@ -318,6 +318,9 @@ export default function AdminPackages() {
   const [activities, setActivities] = useState([]);
   const [faqs, setFaqs] = useState([]);
   const [images, setImages] = useState([]);
+  const [featuredFile, setFeaturedFile] = useState(null);
+  const [featuredPreview, setFeaturedPreview] = useState("");
+  const [featuredUploadError, setFeaturedUploadError] = useState("");
   const [saving, setSaving] = useState(false);
 
   const load = () => {
@@ -380,6 +383,9 @@ export default function AdminPackages() {
     setActivities([]);
     setFaqs([]);
     setImages([]);
+    setFeaturedFile(null);
+    setFeaturedPreview("");
+    setFeaturedUploadError("");
     setFormError("");
     setShowForm(true);
   };
@@ -413,12 +419,16 @@ export default function AdminPackages() {
     setActivities(full.activities.map((a) => ({ title: a.title, day_number: a.day_number, duration: a.duration || "", description: a.description || "" })));
     setFaqs(full.faqs.map((f) => ({ question: f.question, answer: f.answer })));
     setImages(full.images);
+    setFeaturedFile(null);
+    setFeaturedPreview(full.featured_image || "");
+    setFeaturedUploadError("");
     setShowForm(true);
   };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
     setFormError("");
+    setFeaturedUploadError("");
     setSaving(true);
     try {
       const payload = {
@@ -433,14 +443,34 @@ export default function AdminPackages() {
           .map((a) => ({ ...a, day_number: Number(a.day_number) || 1 })),
         faqs: faqs.filter((f) => f.question.trim()),
       };
+      let savedId = editingId;
+      let savedPkg = null;
       if (editingId) {
-        await packageApi.update(editingId, payload);
+        savedPkg = await packageApi.update(editingId, payload);
+        savedId = editingId;
       } else {
-        await packageApi.create(payload);
+        savedPkg = await packageApi.create(payload);
+        savedId = savedPkg.id;
+      }
+      // Featured image is uploaded separately via multipart PATCH because the main payload is JSON.
+      // This matches how Django admin handles it and keeps Cloudinary uploads working.
+      if (featuredFile && savedId) {
+        const fd = new FormData();
+        fd.append("featured_image", featuredFile);
+        try {
+          await packageApi.update(savedId, fd);
+        } catch (imgErr) {
+          const d = imgErr.response?.data;
+          const m = d && typeof d === "object" ? Object.values(d)[0] : null;
+          setFeaturedUploadError((Array.isArray(m) ? m[0] : m) || "Package saved but featured image upload failed — try editing and re-uploading.");
+          // Don't block closing the form; the package itself was saved.
+        }
       }
       setShowForm(false);
       setEditingId(null);
       setFormData(EMPTY_FORM);
+      setFeaturedFile(null);
+      setFeaturedPreview("");
       load();
     } catch (err) {
       const data = err.response?.data;
@@ -582,6 +612,33 @@ export default function AdminPackages() {
               <input type="checkbox" name="is_featured" checked={formData.is_featured} onChange={handleChange} style={{ marginRight: 8 }} />
               Featured package
             </label>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Featured Image (hero on home &amp; package details)</label>
+            {featuredPreview && !featuredFile && (
+              <div style={{ marginBottom: 8 }}>
+                <img src={featuredPreview} alt="Current featured" style={{ maxWidth: 240, maxHeight: 140, objectFit: "cover", borderRadius: 8, border: "1px solid #e2e8f0" }} />
+                <p className="admin-form__note" style={{ marginTop: 4 }}>Current image — choose a new file below to replace it.</p>
+              </div>
+            )}
+            {featuredFile && (
+              <div style={{ marginBottom: 8 }}>
+                <p className="admin-form__note">New file selected: <strong>{featuredFile.name}</strong> — will upload on Save/Update.</p>
+                <img src={URL.createObjectURL(featuredFile)} alt="New preview" style={{ maxWidth: 240, maxHeight: 140, objectFit: "cover", borderRadius: 8, border: "1px solid #e2e8f0" }} />
+              </div>
+            )}
+            {featuredUploadError && <p className="form-error">{featuredUploadError}</p>}
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => {
+                const f = e.target.files[0] || null;
+                setFeaturedFile(f);
+                setFeaturedUploadError("");
+              }}
+            />
+            <p className="admin-form__note">JPG/PNG/WebP recommended. Featured image is what users see on the home page and package hero.</p>
           </div>
 
           <hr className="admin-form__divider" />
