@@ -13,7 +13,9 @@ function statusBadgeClass(status) {
 }
 
 function UpiSettingsPanel() {
-  const [settings, setSettings] = useState({ upi_id: "", merchant_name: "" });
+  const [settings, setSettings] = useState({ upi_id: "", merchant_name: "", qr_image: "" });
+  const [qrFile, setQrFile] = useState(null);
+  const [qrPreview, setQrPreview] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -22,7 +24,10 @@ function UpiSettingsPanel() {
   useEffect(() => {
     paymentApi
       .getSettings()
-      .then((data) => setSettings(data))
+      .then((data) => {
+        setSettings(data);
+        if (data.qr_image) setQrPreview(data.qr_image);
+      })
       .catch(() => {}) // not configured yet — leave the form blank
       .finally(() => setIsLoading(false));
   }, []);
@@ -37,11 +42,26 @@ function UpiSettingsPanel() {
     setError("");
     setSaving(true);
     try {
-      const updated = await paymentApi.updateSettings(settings);
+      let payload;
+      if (qrFile) {
+        payload = new FormData();
+        payload.append("upi_id", settings.upi_id);
+        payload.append("merchant_name", settings.merchant_name);
+        payload.append("qr_image", qrFile);
+      } else {
+        payload = { upi_id: settings.upi_id, merchant_name: settings.merchant_name };
+      }
+      const updated = await paymentApi.updateSettings(payload);
       setSettings(updated);
+      if (updated.qr_image) setQrPreview(updated.qr_image);
+      setQrFile(null);
+      const fileInput = document.querySelector('input[name="qr_image"]');
+      if (fileInput) fileInput.value = "";
       setSaved(true);
     } catch (err) {
-      setError(err.response?.data?.detail || "Couldn't save UPI settings.");
+      const d = err.response?.data;
+      const msg = d ? (typeof d === "string" ? d : Object.values(d).flat().join(" ") || d.detail) : err.message;
+      setError(msg || "Couldn't save UPI settings.");
     } finally {
       setSaving(false);
     }
@@ -54,7 +74,7 @@ function UpiSettingsPanel() {
       <h3>UPI Receiving Account</h3>
       <p className="admin-form__note">
         This is the account customers pay into. When a customer chooses UPI at checkout, their
-        UPI app opens with this account and the booking amount pre-filled.
+        UPI app opens with this account and the booking amount pre-filled. Upload a QR code so customers can scan and pay instantly — booking stays <strong>pending</strong> until you verify and <strong>Mark Paid</strong> below.
       </p>
       {error && <p className="form-error">{error}</p>}
       {saved && <p className="badge badge-success" style={{ display: "inline-block", marginBottom: "var(--space-md)" }}>Saved.</p>}
@@ -82,6 +102,34 @@ function UpiSettingsPanel() {
             required
           />
         </div>
+      </div>
+
+      <div className="form-group">
+        <label className="form-label">QR Code Image (optional)</label>
+        {qrPreview && !qrFile && (
+          <div style={{ marginBottom: 10 }}>
+            <img src={qrPreview} alt="Current QR" style={{ maxWidth: 160, borderRadius: 12, border: "1px solid #e2e8f0" }} />
+            <p className="admin-form__note" style={{ marginTop: 6 }}>Current QR — choose a new file to replace it.</p>
+          </div>
+        )}
+        {qrFile && (
+          <div style={{ marginBottom: 10 }}>
+            <p className="admin-form__note">New file: <strong>{qrFile.name}</strong></p>
+            <img src={URL.createObjectURL(qrFile)} alt="New QR preview" style={{ maxWidth: 160, borderRadius: 12, border: "1px solid #e2e8f0" }} />
+          </div>
+        )}
+        <input
+          name="qr_image"
+          type="file"
+          accept="image/*"
+          onChange={(e) => {
+            const f = e.target.files[0] || null;
+            setQrFile(f);
+            setSaved(false);
+            setError("");
+          }}
+        />
+        <p className="admin-form__note">PNG/JPG of the UPI QR. Shows on the payment page alongside the UPI ID. Leave empty to auto-generate QR from the UPI link.</p>
       </div>
 
       <button type="submit" className="btn btn-primary" disabled={saving}>

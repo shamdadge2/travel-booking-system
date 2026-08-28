@@ -60,7 +60,7 @@ class PaymentProcessSerializer(serializers.Serializer):
 class PaymentSettingsSerializer(serializers.ModelSerializer):
     class Meta:
         model = PaymentSettings
-        fields = ["upi_id", "merchant_name"]
+        fields = ["upi_id", "merchant_name", "qr_image"]
 
 
 class PaymentReferenceSerializer(serializers.Serializer):

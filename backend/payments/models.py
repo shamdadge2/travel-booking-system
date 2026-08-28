@@ -92,6 +92,12 @@ class PaymentSettings(models.Model):
         default="Travel Booking System",
         help_text="Name shown to the customer in their UPI app.",
     )
+    qr_image = models.ImageField(
+        upload_to="payments/qr/",
+        blank=True,
+        null=True,
+        help_text="Optional QR code image for this UPI ID. Shown to customers at checkout alongside the UPI deep link.",
+    )
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:

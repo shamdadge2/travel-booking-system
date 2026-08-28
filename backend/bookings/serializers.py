@@ -107,7 +107,7 @@ class BookingCreateSerializer(serializers.Serializer):
     """
 
     package = serializers.PrimaryKeyRelatedField(
-        queryset=TourPackage.objects.filter(status=TourPackage.Status.PUBLISHED)
+        queryset=TourPackage.objects.all()
     )
     travel_date = serializers.DateField(required=False, allow_null=True)
     number_of_travelers = serializers.IntegerField(min_value=1)

@@ -2,7 +2,8 @@ from django.db import transaction
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, parser_classes
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
@@ -204,6 +205,7 @@ def submit_payment_reference(request, payment_id):
 # ---------------------------------------------------------------
 @api_view(["GET", "PUT"])
 @permission_classes([AllowAny])
+@parser_classes([MultiPartParser, FormParser, JSONParser])
 def payment_settings(request):
     settings_obj = PaymentSettings.get_current()
 

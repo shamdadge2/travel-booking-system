@@ -244,20 +244,50 @@ export default function Payment() {
 
           {method === "upi" ? (
             <>
+              {upiSettings ? (
+                <div className="payment-page__upi-box">
+                  {(() => {
+                    const previewLink = buildUpiLink({
+                      payeeUpiId: upiSettings.upi_id,
+                      payeeName: upiSettings.merchant_name,
+                      amount: booking.total_amount,
+                      note: `Booking ${booking.booking_reference}`,
+                    });
+                    const qrSrc = upiSettings.qr_image
+                      ? upiSettings.qr_image
+                      : `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(previewLink)}`;
+                    return (
+                      <>
+                        <div className="payment-page__qr-wrap">
+                          <img src={qrSrc} alt="UPI QR code" className="payment-page__qr-img" />
+                        </div>
+                        <div className="payment-page__upi-details">
+                          <p><strong>UPI ID:</strong> {upiSettings.upi_id}</p>
+                          <p><strong>Payee:</strong> {upiSettings.merchant_name}</p>
+                          <p><strong>Amount:</strong> {formatCurrency(booking.total_amount)} — Booking {booking.booking_reference}</p>
+                        </div>
+                        <p className="payment-page__qr-note">Scan with any UPI app (PhonePe, GPay, Paytm) or tap the button to open the app directly. Your booking stays <strong>pending</strong> until our admin verifies the payment.</p>
+                      </>
+                    );
+                  })()}
+                </div>
+              ) : (
+                <p className="payment-page__mock-note" style={{ color: "#dc2626" }}>
+                  UPI not configured yet — please contact support or use Card/Net Banking (demo).
+                </p>
+              )}
               <p className="payment-page__mock-note">
-                Tapping pay opens your UPI app (PhonePe, GPay, Paytm...) with{" "}
-                {formatCurrency(booking.total_amount)} already filled in. After paying, you'll
-                submit your transaction reference for us to verify — your booking is confirmed
-                once that's checked, not automatically.
+                After paying in your UPI app, you'll submit the UTR reference for verification — booking is confirmed only after admin checks it.
               </p>
               <button
                 type="button"
                 className="btn btn-primary btn-block"
                 onClick={handleUpiPay}
-                disabled={processing}
+                disabled={processing || !upiSettings}
               >
-                {processing ? "Opening UPI app..." : `Pay ${formatCurrency(booking.total_amount)} via UPI`}
+                {processing ? "Opening UPI app..." : `Pay ${formatCurrency(booking.total_amount)} via UPI App`}
               </button>
+              <p className="payment-page__mock-note" style={{ textAlign: "center", marginTop: 8 }}>or scan the QR above with your UPI app</p>
             </>
           ) : (
             <form onSubmit={handleMockPay}>
