@@ -1,6 +1,6 @@
 .not-found {
   text-align: center;
-  padding: 100px var(--space-lg) var(--space-2xl);
+  padding: var(--space-2xl) var(--space-lg);
 }
 
 .not-found h1 {

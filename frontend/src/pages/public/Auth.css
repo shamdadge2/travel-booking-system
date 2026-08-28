@@ -3,7 +3,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 100px var(--space-lg) var(--space-2xl);
+  padding: var(--space-2xl) var(--space-lg);
   background-color: var(--color-bg-alt);
 }
 
