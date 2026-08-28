@@ -6,7 +6,7 @@ export default function Navbar() {
   const { isAuthenticated, isStaffOrAdmin, user, logout } = useAuth();
 
   return (
-    <header className="navbar">
+    <header className="navbar navbar--transparent">
       <div className="container navbar__inner">
         <Link to="/" className="navbar__brand">
           Travel<span>Booking</span>
