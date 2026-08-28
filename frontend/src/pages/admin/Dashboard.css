@@ -1,37 +1,72 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800;900&family=Manrope:wght@400;600;800&display=swap');
+
 .admin-dashboard__stats {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: var(--space-md);
-  margin-bottom: var(--space-lg);
+  gap: 16px;
+  margin-bottom: 24px;
 }
 
 .admin-dashboard__stat {
-  padding: var(--space-lg);
+  padding: 20px 18px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  box-shadow: 0 1px 3px rgba(15,23,42,0.06);
+  transition: transform 0.18s, box-shadow 0.18s;
+}
+
+.admin-dashboard__stat:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(15,23,42,0.08);
 }
 
 .admin-dashboard__stat-value {
-  font-size: var(--font-size-2xl);
-  font-weight: 800;
-  color: var(--color-primary);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 1.9rem;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  color: #0f172a;
+  line-height: 1;
 }
 
+.admin-dashboard__stat:nth-child(1) .admin-dashboard__stat-value { color: #0f7a6c; }
+.admin-dashboard__stat:nth-child(2) .admin-dashboard__stat-value { color: #0891b2; }
+.admin-dashboard__stat:nth-child(3) .admin-dashboard__stat-value { color: #d97706; }
+.admin-dashboard__stat:nth-child(4) .admin-dashboard__stat-value { color: #059669; }
+
 .admin-dashboard__stat-label {
-  font-size: var(--font-size-sm);
-  color: var(--color-text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #64748b;
 }
 
 .admin-dashboard__grid {
   display: grid;
   grid-template-columns: 2fr 1fr 1fr;
-  gap: var(--space-md);
+  gap: 16px;
   align-items: start;
 }
 
 .admin-dashboard__panel {
-  padding: var(--space-lg);
+  padding: 20px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  box-shadow: 0 1px 3px rgba(15,23,42,0.06);
+}
+
+.admin-dashboard__panel h3 {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 1rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin-bottom: 14px;
 }
 
 .admin-dashboard__panel table {
@@ -44,16 +79,16 @@
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--space-sm);
+  gap: 0;
 }
 
 .admin-dashboard__popular li {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: var(--font-size-sm);
-  padding: var(--space-sm) 0;
-  border-bottom: 1px solid var(--color-border);
+  font-size: 0.88rem;
+  padding: 12px 0;
+  border-bottom: 1px solid #f1f5f9;
 }
 
 .admin-dashboard__popular li:last-child {

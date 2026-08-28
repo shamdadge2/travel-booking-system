@@ -1,25 +1,57 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800;900&family=Manrope:wght@400;600;800&display=swap');
+
 .admin-form {
-  padding: var(--space-lg);
-  margin-bottom: var(--space-lg);
+  padding: 24px;
+  margin-bottom: 24px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  box-shadow: 0 1px 3px rgba(15,23,42,0.06), 0 8px 20px rgba(15,23,42,0.04);
+  font-family: 'Manrope', 'Inter', system-ui, sans-serif;
 }
 
 .admin-form__note {
-  font-size: var(--font-size-sm);
-  color: var(--color-text-light);
-  margin-bottom: var(--space-md);
+  font-size: 0.85rem;
+  color: #64748b;
+  margin-bottom: 12px;
+  line-height: 1.5;
 }
 
 .admin-form__divider {
   border: none;
-  border-top: 1px solid var(--color-border);
-  margin: var(--space-lg) 0;
+  border-top: 1px solid #e2e8f0;
+  margin: 24px 0;
+}
+
+.admin-form .form-label {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #0f172a;
+}
+
+.admin-form .form-input,
+.admin-form .form-textarea,
+.admin-form .form-select {
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.admin-form .form-input:focus,
+.admin-form .form-textarea:focus,
+.admin-form .form-select:focus {
+  border-color: #0f7a6c;
+  box-shadow: 0 0 0 3px rgba(0,229,204,0.18);
 }
 
 .admin-list-row {
   display: flex;
   align-items: center;
-  gap: var(--space-sm);
-  margin-bottom: var(--space-sm);
+  gap: 10px;
+  margin-bottom: 10px;
 }
 
 .admin-list-row .form-input {
@@ -27,73 +59,98 @@
 }
 
 .admin-list-row__remove {
-  background: none;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  color: var(--color-danger);
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  color: #dc2626;
   cursor: pointer;
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  transition: background 0.15s;
+}
+
+.admin-list-row__remove:hover {
+  background: #fef2f2;
+  border-color: #fecaca;
 }
 
 .admin-list-row__add {
-  margin-top: var(--space-xs);
-  padding: 6px 14px;
-  font-size: var(--font-size-sm);
+  margin-top: 8px;
+  padding: 8px 14px;
+  font-size: 0.84rem;
+  font-weight: 700;
+  border-radius: 999px;
+  border: 1px dashed #cbd5e1;
+  background: #f8fafc;
+  color: #0f7a6c;
+}
+
+.admin-list-row__add:hover {
+  background: #e6f5f2;
+  border-color: #0f7a6c;
 }
 
 .admin-images-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: var(--space-md);
-  margin-bottom: var(--space-md);
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 14px;
+  margin-bottom: 16px;
 }
 
 .admin-images-grid__item {
   position: relative;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
   overflow: hidden;
   background-color: #fff;
+  box-shadow: 0 1px 3px rgba(15,23,42,0.06);
 }
 
 .admin-images-grid__item img {
   width: 100%;
-  height: 100px;
+  height: 120px;
   object-fit: cover;
 }
 
 .admin-images-grid__caption {
-  padding: var(--space-xs) var(--space-sm);
+  padding: 10px 12px;
 }
 
 .admin-images-grid__caption strong {
   display: block;
-  font-size: var(--font-size-sm);
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: #0f172a;
 }
 
 .admin-images-grid__caption p {
-  font-size: var(--font-size-sm);
-  color: var(--color-text-muted);
-  margin: 2px 0 0;
+  font-size: 0.82rem;
+  color: #64748b;
+  margin: 4px 0 0;
+  line-height: 1.4;
 }
 
 .admin-images-grid__item .admin-list-row__remove {
   position: absolute;
-  top: var(--space-xs);
-  right: var(--space-xs);
-  background-color: #fff;
+  top: 8px;
+  right: 8px;
+  background-color: rgba(255,255,255,0.92);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
 }
 
 .admin-image-upload {
   display: flex;
-  gap: var(--space-sm);
+  gap: 10px;
   flex-wrap: wrap;
   align-items: center;
-  padding: var(--space-sm);
-  background-color: var(--color-bg-alt);
-  border-radius: var(--radius-sm);
+  padding: 14px;
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
 }
 
 .admin-image-upload .form-input {
@@ -101,62 +158,85 @@
   min-width: 160px;
 }
 
+.admin-image-upload .btn {
+  border-radius: 999px;
+  font-weight: 700;
+  background: #fff;
+  border: 1px solid #0f7a6c;
+  color: #0f7a6c;
+}
+
+.admin-image-upload .btn:hover {
+  background: #e6f5f2;
+}
+
 .json-import {
-  padding: var(--space-md);
-  background-color: var(--color-primary-light);
-  border-radius: var(--radius-md);
-  margin-bottom: var(--space-md);
+  padding: 18px;
+  background: linear-gradient(135deg, #e6f5f2 0%, #f0fdfa 100%);
+  border: 1px solid rgba(15,122,108,0.12);
+  border-radius: 16px;
+  margin-bottom: 18px;
 }
 
 .json-import__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-md);
+  gap: 12px;
 }
 
 .json-import__header h4 {
   margin-bottom: 0;
-  font-size: var(--font-size-base);
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.01em;
 }
 
 .json-import__toggle {
   background: none;
   border: none;
-  color: var(--color-primary-dark);
-  font-size: var(--font-size-sm);
-  font-weight: 600;
+  color: #0f7a6c;
+  font-size: 0.82rem;
+  font-weight: 700;
   cursor: pointer;
   padding: 0;
   white-space: nowrap;
 }
 
 .json-import__template {
-  background-color: #1f2937;
-  color: #d1d5db;
-  padding: var(--space-md);
-  border-radius: var(--radius-sm);
-  font-size: var(--font-size-sm);
+  background-color: #0f172a;
+  color: #cbd5e1;
+  padding: 14px;
+  border-radius: 12px;
+  font-size: 0.82rem;
   overflow-x: auto;
-  margin: var(--space-sm) 0;
+  margin: 12px 0;
   white-space: pre;
+  line-height: 1.6;
 }
 
 .json-import__textarea {
-  font-family: monospace;
-  font-size: var(--font-size-sm);
-  margin-top: var(--space-sm);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.84rem;
+  margin-top: 10px;
+  border-radius: 12px;
 }
 
 .json-import__actions {
   display: flex;
   align-items: center;
-  gap: var(--space-md);
-  margin-top: var(--space-sm);
+  gap: 12px;
+  margin-top: 12px;
   flex-wrap: wrap;
 }
 
+.json-import__actions .btn {
+  border-radius: 999px;
+  font-weight: 700;
+}
+
 .json-import__or {
-  color: var(--color-text-muted);
-  font-size: var(--font-size-sm);
+  color: #64748b;
+  font-size: 0.85rem;
 }
