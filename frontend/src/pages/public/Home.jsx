@@ -69,18 +69,14 @@ export default function Home() {
         <div className="home-hero__bg" aria-hidden="true" />
         <div className="home-hero__overlay" aria-hidden="true" />
         <div className="container home-hero__inner">
-          <div className="home-hero__main">
-            <div className="home-hero__content">
-              <h1 className="home-hero__title">Explore the World Beyond Borders</h1>
-              <p className="home-hero__desc">
-                Discover breathtaking destinations, curated trips, and unforgettable travel experiences designed for explorers.
-              </p>
-            </div>
-            <div className="home-hero__cta-wrap">
-              <button className="home-hero__cta" onClick={() => navigate("/packages")} type="button">
-                Start Exploring
-              </button>
-            </div>
+          <div className="home-hero__content">
+            <h1 className="home-hero__title">Explore the World Beyond Borders</h1>
+            <p className="home-hero__desc">
+              Discover breathtaking destinations, curated trips, and unforgettable travel experiences designed for explorers.
+            </p>
+            <button className="home-hero__cta" onClick={() => navigate("/packages")} type="button">
+              Start Exploring
+            </button>
           </div>
 
           <div className="home-hero__stats">
