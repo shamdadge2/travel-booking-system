@@ -222,6 +222,15 @@ STORAGES = {
     },
 }
 
+# When CLOUDINARY_URL is set (e.g. on Render), store uploaded media in
+# Cloudinary so images survive deploys/restarts. Without it, the local
+# filesystem is used (fine for local dev).
+CLOUDINARY_URL = os.getenv("CLOUDINARY_URL")
+if CLOUDINARY_URL:
+    STORAGES["default"] = {
+        "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage",
+    }
+
 
 # ------------------------------------------------------------------
 # DJANGO REST FRAMEWORK

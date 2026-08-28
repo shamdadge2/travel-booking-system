@@ -108,7 +108,7 @@ export default function Home() {
                 <p className="home-error__title">Something went wrong</p>
                 <p className="home-error__msg">{error}</p>
                 <p className="home-error__msg" style={{ fontSize: "0.85rem", marginTop: 8 }}>
-                  Tip: run <code>python manage.py runserver</code> in <code>backend/</code> and ensure <code>VITE_API_BASE_URL</code> in <code>frontend/.env</code> points to it.
+                  If the problem persists, please try again in a moment.
                 </p>
                 <button className="btn btn-primary" onClick={() => window.location.reload()} style={{ marginTop: 12 }}>Retry</button>
               </div>
@@ -122,7 +122,7 @@ export default function Home() {
                 <div className="home-section-head__left">
                   <span className="home-eyebrow">CURATED FOR YOU</span>
                   <h2 className="home-heading">Featured Adventures</h2>
-                  <p className="home-sub">Our best-value trips, curated by our travel experts — added by our team in Django Admin and shown here instantly.</p>
+                  <p className="home-sub">Our best-value trips, handpicked by our travel experts for an unforgettable experience.</p>
                 </div>
                 <Link to="/packages" className="home-link">
                   View All Packages <span aria-hidden="true">→</span>
@@ -137,7 +137,7 @@ export default function Home() {
                 </div>
               ) : featuredPackages.length === 0 ? (
                 <div className="home-empty">
-                  <p>No featured packages yet — mark packages as “Featured” in Django Admin to show them here.</p>
+                  <p>No featured packages available right now — browse all our trips instead.</p>
                   <Link to="/packages" className="btn btn-outline">Browse all packages</Link>
                 </div>
               ) : (
@@ -198,7 +198,7 @@ export default function Home() {
                 <div>
                   <span className="home-eyebrow home-eyebrow--light">DISCOVER PLACES</span>
                   <h2 className="home-heading">Explore Popular Destinations</h2>
-                  <p className="home-sub home-sub--center">Handpicked locations from our live destination catalog — add more in Django Admin to see them here.</p>
+                  <p className="home-sub home-sub--center">Handpicked locations from our growing destination catalog.</p>
                 </div>
               </div>
 
@@ -210,7 +210,7 @@ export default function Home() {
                 </div>
               ) : destinations.length === 0 ? (
                 <div className="home-empty home-empty--center">
-                  <p>No destinations yet — add destinations in Django Admin to populate this section.</p>
+                  <p>No destinations available yet — we're adding new places all the time, so check back soon.</p>
                   <Link to="/destinations" className="btn btn-primary">Explore destinations</Link>
                 </div>
               ) : (

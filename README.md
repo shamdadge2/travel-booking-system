@@ -164,6 +164,7 @@ Key variables in `.env`:
 | `JWT_ACCESS_MINUTES`, `JWT_REFRESH_DAYS` | Token lifetimes |
 | `CORS_ALLOWED_ORIGINS` | Must include your frontend's origin (`http://127.0.0.1:5173` by default) |
 | `GOOGLE_CLIENT_ID` | Optional — enables "Sign in with Google". From Google Cloud Console > Credentials > OAuth 2.0 Client ID. Leave blank to disable. |
+| `CLOUDINARY_URL` | **Required on Render/production.** Set to your Cloudinary URL (e.g. `cloudinary://key:secret@name`) so uploaded images persist across deploys. When unset, media falls back to the local filesystem (fine for local dev). |
 
 ### 4. PostgreSQL configuration (optional — SQLite works out of the box)
 

@@ -47,6 +47,8 @@ urlpatterns = [
     path("api/contact/", include("contact.urls")),
 ]
 
-# Serve uploaded media even in production (Render free has ephemeral FS but fine for demo)
-# DEBUG check removed because DEBUG=False on Render would otherwise 404 all /media/ image requests
+# Serve uploaded media from the local filesystem when CLOUDINARY_URL is
+# not set (local dev). In production media lives in Cloudinary, so this is
+# only a fallback. DEBUG check removed because DEBUG=False on Render would
+# otherwise 404 all /media/ image requests.
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
