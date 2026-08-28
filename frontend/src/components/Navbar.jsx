@@ -1,18 +1,12 @@
-import { Link, NavLink, useLocation } from "react-router-dom";
+import { Link, NavLink } from "react-router-dom";
 import useAuth from "../hooks/useAuth";
 import "./Navbar.css";
 
 export default function Navbar() {
   const { isAuthenticated, isStaffOrAdmin, user, logout } = useAuth();
-  const location = useLocation();
-  const isTransparent =
-    location.pathname === "/" ||
-    location.pathname.startsWith("/destinations") ||
-    location.pathname.startsWith("/packages") ||
-    location.pathname === "/contact";
 
   return (
-    <header className={`navbar ${isTransparent ? 'navbar--transparent' : ''}`}>
+    <header className="navbar">
       <div className="container navbar__inner">
         <Link to="/" className="navbar__brand">
           Travel<span>Booking</span>

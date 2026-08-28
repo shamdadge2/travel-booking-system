@@ -141,7 +141,7 @@
 }
 
 .navbar__btn-logout {
-  background: #ef4444;
+  background: #991b1b;
   color: #fff;
   border: none;
   padding: 7px 16px;
@@ -149,14 +149,20 @@
   font-size: 0.82rem;
   font-weight: 700;
 }
+.navbar__btn-logout:hover {
+  background: #7f1d1d;
+}
 .navbar__btn-signup {
-  background: var(--color-primary);
+  background: #0f6b5e;
   color: #fff;
   padding: 7px 16px;
   border-radius: 999px;
   font-size: 0.82rem;
   font-weight: 700;
   border: none;
+}
+.navbar__btn-signup:hover {
+  background: #0d5c51;
 }
 
 @media (max-width: 860px) {

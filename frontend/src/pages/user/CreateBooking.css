@@ -194,17 +194,17 @@
 }
 
 .create-booking__summary .btn-primary {
-  background: #00e5cc;
-  color: #0a1628;
+  background: #0f6b5e;
+  color: #fff;
   border: none;
   border-radius: 999px;
   padding: 13px;
   font-weight: 800;
-  box-shadow: 0 8px 20px rgba(0,229,204,0.22);
+  box-shadow: 0 6px 14px rgba(15,107,94,0.18);
 }
 
 .create-booking__summary .btn-primary:hover {
-  background: #00d4bc;
+  background: #0d5c51;
 }
 
 .create-booking .btn-outline {
