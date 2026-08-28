@@ -70,6 +70,8 @@ THIRD_PARTY_APPS = [
     "rest_framework_simplejwt.token_blacklist",
     "corsheaders",
     "django_filters",
+    "cloudinary",
+    "cloudinary_storage",
 ]
 
 LOCAL_APPS = [
