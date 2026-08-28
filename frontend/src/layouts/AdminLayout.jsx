@@ -1,5 +1,4 @@
 import { NavLink, Outlet, Link } from "react-router-dom";
-import Navbar from "../components/Navbar";
 import useAuth from "../hooks/useAuth";
 import "./AdminLayout.css";
 
@@ -19,9 +18,7 @@ export default function AdminLayout() {
   const { user, logout } = useAuth();
 
   return (
-    <>
-      <Navbar />
-      <div className="admin-layout">
+    <div className="admin-layout">
       <aside className="admin-sidebar">
         <Link to="/" className="admin-sidebar__brand">
           Travel<span>Booking</span>
@@ -55,6 +52,5 @@ export default function AdminLayout() {
         <Outlet />
       </main>
     </div>
-    </>
   );
 }
