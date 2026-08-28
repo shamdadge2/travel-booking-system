@@ -8,8 +8,8 @@
   font-family: 'Manrope', 'Inter', system-ui, -apple-system, sans-serif;
   --navy: #0f172a;
   --teal: #0f7a6c;
-  --cyan: #00e5cc;
-  --cyan-hover: #00d4bc;
+  --cyan: #0fb5a2;
+  --cyan-hover: #0d9d8e;
   --stone: #f8fafc;
 }
 
@@ -22,8 +22,8 @@
   display: flex;
   flex-direction: column;
   position: sticky;
-  top: 0;
-  height: 100vh;
+  top: 64px;
+  height: calc(100vh - 64px);
   border-right: 1px solid rgba(255,255,255,0.06);
 }
 
@@ -117,6 +117,7 @@
 .admin-content {
   flex: 1;
   padding: 32px 28px;
+  padding-top: 96px;
   min-width: 0;
   background: #f8fafc;
 }
@@ -125,6 +126,8 @@
   .admin-sidebar {
     width: 72px;
     padding: 18px 10px;
+    top: 0;
+    height: 100vh;
   }
   .admin-sidebar__brand {
     font-size: 1rem;

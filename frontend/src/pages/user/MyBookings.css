@@ -4,8 +4,8 @@
 .myb-page {
   --navy: #0f172a;
   --teal: #0f7a6c;
-  --cyan: #00e5cc;
-  --cyan-hover: #00d4bc;
+  --cyan: #0fb5a2;
+  --cyan-hover: #0d9d8e;
   --stone: #f8fafc;
   font-family: 'Manrope', 'Inter', system-ui, -apple-system, sans-serif;
   margin: 0;
@@ -24,10 +24,11 @@
   overflow: hidden;
   isolation: isolate;
   border-bottom: 1px solid #e2e8f0;
+  padding-top: 64px;
 }
 
 .myb-hero__inner {
-  padding-top: 40px;
+  padding-top: 0;
   padding-bottom: 36px;
 }
 

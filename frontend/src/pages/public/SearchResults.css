@@ -1,3 +1,7 @@
+.search-results {
+  padding-top: 100px;
+}
+
 .page-header strong {
   color: var(--color-text);
 }

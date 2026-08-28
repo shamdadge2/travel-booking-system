@@ -27,7 +27,7 @@
   letter-spacing: -0.03em;
 }
 .navbar--transparent .navbar__brand span {
-  color: #00e5cc;
+  color: #0fb5a2;
 }
 
 .navbar--transparent .navbar__link {
@@ -56,7 +56,7 @@
 }
 
 .navbar--transparent .navbar__btn-signup {
-  background: #00e5cc;
+  background: #0fb5a2;
   color: #0f172a;
   border: none;
   padding: 7px 16px;
@@ -65,7 +65,7 @@
   font-weight: 800;
 }
 .navbar--transparent .navbar__btn-signup:hover {
-  background: #00d4bc;
+  background: #0d9d8e;
   color: #0f172a;
   text-decoration: none;
 }

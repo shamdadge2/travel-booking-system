@@ -27,7 +27,7 @@
 }
 
 .admin-page__header .btn-primary {
-  background: #00e5cc;
+  background: #0fb5a2;
   color: #0a1628;
   border: none;
   border-radius: 999px;
@@ -38,7 +38,7 @@
 }
 
 .admin-page__header .btn-primary:hover {
-  background: #00d4bc;
+  background: #0d9d8e;
 }
 
 .admin-table-wrap {
