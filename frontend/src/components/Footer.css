@@ -1,84 +1,265 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800;900&family=Manrope:wght@400;600;800&display=swap');
+
 .footer {
-  margin-top: var(--space-2xl);
-  background-color: var(--color-text);
-  color: #d1d5db;
+  margin-top: 0;
+  background:
+    radial-gradient(900px 400px at 18% 0%, rgba(0,229,204,0.08), transparent 62%),
+    radial-gradient(700px 400px at 88% 0%, rgba(15,122,108,0.10), transparent 60%),
+    linear-gradient(180deg, #0f172a 0%, #0a0f1e 100%);
+  color: #cbd5e1;
+  font-family: 'Manrope', 'Inter', system-ui, -apple-system, sans-serif;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  position: relative;
+  overflow: hidden;
 }
 
+/* ---------- CTA strip ---------- */
+.footer__cta {
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.03);
+  backdrop-filter: blur(8px);
+}
+
+.footer__cta-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 22px 0;
+  flex-wrap: wrap;
+}
+
+.footer__cta-text h3 {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 1.18rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #fff;
+  margin: 0 0 4px;
+}
+
+.footer__cta-text p {
+  margin: 0;
+  color: #94a3b8;
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.footer__cta-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #0fb5a2;
+  color: #0a1628 !important;
+  padding: 11px 20px;
+  border-radius: 999px;
+  font-weight: 800;
+  font-size: 0.88rem;
+  letter-spacing: -0.01em;
+  text-decoration: none !important;
+  box-shadow: 0 8px 20px rgba(0,229,204,0.22);
+  transition: background 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+  white-space: nowrap;
+}
+
+.footer__cta-btn:hover {
+  background: #0d9d8e;
+  transform: translateY(-1px);
+  box-shadow: 0 12px 28px rgba(0,229,204,0.28);
+}
+
+/* ---------- Main grid ---------- */
 .footer__inner {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr;
-  gap: var(--space-lg);
-  padding: var(--space-2xl) var(--space-lg) var(--space-xl);
+  grid-template-columns: 1.8fr 1fr 1fr 1fr;
+  gap: 36px 32px;
+  padding: 40px 0 32px;
 }
 
 .footer__brand {
-  font-size: var(--font-size-lg);
-  font-weight: 800;
-  color: #fff;
-  margin-bottom: var(--space-sm);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 1.42rem;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  color: #fff !important;
+  text-decoration: none !important;
+  display: inline-block;
+  margin-bottom: 10px;
 }
 
 .footer__brand span {
-  color: var(--color-accent);
+  color: #0fb5a2;
 }
 
 .footer__tagline {
-  color: #9ca3af;
-  font-size: var(--font-size-sm);
-  margin-bottom: 0;
+  color: #94a3b8;
+  font-size: 0.92rem;
+  line-height: 1.65;
+  margin: 0 0 18px;
+  max-width: 36ch;
+}
+
+.footer__contact {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.footer__contact li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.88rem;
+}
+
+.footer__contact-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: #0fb5a2;
+  flex-shrink: 0;
+}
+
+.footer__contact-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.footer__contact a {
+  color: #cbd5e1 !important;
+  text-decoration: none !important;
+  font-weight: 600;
+  transition: color 0.15s ease;
+}
+
+.footer__contact a:hover {
+  color: #fff !important;
 }
 
 .footer__col h4 {
+  font-family: 'Inter', system-ui, sans-serif;
   color: #fff;
-  font-size: var(--font-size-sm);
+  font-size: 0.78rem;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: var(--space-md);
+  letter-spacing: 0.12em;
+  margin: 4px 0 16px;
 }
 
 .footer__col a {
   display: block;
-  color: #d1d5db;
-  font-size: var(--font-size-sm);
-  margin-bottom: var(--space-sm);
+  color: #94a3b8 !important;
+  font-size: 0.9rem;
+  font-weight: 500;
+  margin-bottom: 11px;
+  text-decoration: none !important;
+  transition: color 0.15s ease, transform 0.15s ease;
 }
 
 .footer__col a:hover {
-  color: #fff;
+  color: #fff !important;
+  transform: translateX(2px);
 }
 
+/* ---------- Bottom bar ---------- */
 .footer__bottom {
-  border-top: 1px solid #374151;
-  padding: var(--space-md) 0;
-  font-size: var(--font-size-sm);
-  color: #9ca3af;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  padding: 16px 0;
+  font-size: 0.84rem;
+  color: #64748b;
+  background: rgba(0,0,0,0.14);
 }
 
 .footer__bottom-inner {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-sm) var(--space-lg);
+  gap: 14px 24px;
   justify-content: space-between;
   align-items: center;
+}
+
+.footer__copy {
+  color: #64748b;
+  font-weight: 500;
 }
 
 .footer__credit {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-md);
+  gap: 12px;
 }
 
 .footer__credit-label {
-  color: #9ca3af;
+  color: #94a3b8;
+  font-size: 0.84rem;
 }
 
 .footer__credit-label strong {
-  color: #d1d5db;
+  color: #e2e8f0;
+  font-weight: 800;
 }
 
-@media (max-width: 760px) {
+.footer__dot {
+  color: rgba(255,255,255,0.18);
+}
+
+/* Social icons inside dark footer — make them subtle pills */
+.footer .social-icons {
+  gap: 8px;
+}
+
+.footer .social-icons__link {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: #cbd5e1;
+}
+
+.footer .social-icons__link:hover {
+  background: rgba(255,255,255,0.10);
+  border-color: rgba(255,255,255,0.14);
+  color: #fff;
+}
+
+.footer .social-icons__label {
+  display: none;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 900px) {
   .footer__inner {
     grid-template-columns: 1fr 1fr;
+    gap: 28px 24px;
+  }
+  .footer__col--brand {
+    grid-column: 1 / -1;
+  }
+  .footer__tagline {
+    max-width: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .footer__cta-inner {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .footer__inner {
+    grid-template-columns: 1fr 1fr;
+    padding: 28px 0 24px;
+  }
+  .footer__bottom-inner {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
