@@ -16,13 +16,13 @@ export default function AdminDestinations() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState(EMPTY_FORM);
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState("");
+  const [imageUploadError, setImageUploadError] = useState("");
   const [saving, setSaving] = useState(false);
 
   const load = () => {
     setIsLoading(true);
-    // As a staff/admin request (JWT attached via axios interceptor),
-    // the backend returns both active and inactive destinations when
-    // no is_active filter is passed — see destinations/views.py.
     destinationApi
       .list({ page_size: 100 })
       .then((data) => setDestinations(data.results))
@@ -39,6 +39,9 @@ export default function AdminDestinations() {
   const startCreate = () => {
     setEditingId(null);
     setFormData(EMPTY_FORM);
+    setImageFile(null);
+    setImagePreview("");
+    setImageUploadError("");
     setFormError("");
     setShowForm(true);
   };
@@ -52,6 +55,9 @@ export default function AdminDestinations() {
       country: destination.country,
       description: destination.description || "",
     });
+    setImageFile(null);
+    setImagePreview(destination.image || "");
+    setImageUploadError("");
     setFormError("");
     setShowForm(true);
   };
@@ -59,16 +65,33 @@ export default function AdminDestinations() {
   const handleSubmit = async (event) => {
     event.preventDefault();
     setFormError("");
+    setImageUploadError("");
     setSaving(true);
     try {
+      let savedId = editingId;
       if (editingId) {
         await destinationApi.update(editingId, formData);
+        savedId = editingId;
       } else {
-        await destinationApi.create(formData);
+        const created = await destinationApi.create(formData);
+        savedId = created.id;
+      }
+      if (imageFile && savedId) {
+        const fd = new FormData();
+        fd.append("image", imageFile);
+        try {
+          await destinationApi.update(savedId, fd);
+        } catch (imgErr) {
+          const d = imgErr.response?.data;
+          const m = d && typeof d === "object" ? Object.values(d)[0] : null;
+          setImageUploadError((Array.isArray(m) ? m[0] : m) || "Destination saved but image upload failed — try editing and re-uploading.");
+        }
       }
       setShowForm(false);
       setFormData(EMPTY_FORM);
       setEditingId(null);
+      setImageFile(null);
+      setImagePreview("");
       load();
     } catch (err) {
       const data = err.response?.data;
@@ -85,8 +108,6 @@ export default function AdminDestinations() {
       await destinationApi.remove(destination.id);
       setDestinations(destinations.filter((d) => d.id !== destination.id));
     } catch (err) {
-      // Backend returns a 409 with a helpful message when the
-      // destination still has packages pointing at it (PROTECT).
       setError(err.response?.data?.detail || "Couldn't delete this destination.");
     }
   };
@@ -130,6 +151,34 @@ export default function AdminDestinations() {
             <label className="form-label">Description</label>
             <textarea name="description" rows="3" className="form-textarea" value={formData.description} onChange={handleChange} />
           </div>
+
+          <div className="form-group">
+            <label className="form-label">Featured Image (shown on destination cards &amp; hero)</label>
+            {imagePreview && !imageFile && (
+              <div style={{ marginBottom: 8 }}>
+                <img src={imagePreview} alt="Current" style={{ maxWidth: 240, maxHeight: 140, objectFit: "cover", borderRadius: 8, border: "1px solid #e2e8f0" }} />
+                <p className="admin-form__note" style={{ marginTop: 4 }}>Current image — choose a new file below to replace it.</p>
+              </div>
+            )}
+            {imageFile && (
+              <div style={{ marginBottom: 8 }}>
+                <p className="admin-form__note">New file selected: <strong>{imageFile.name}</strong> — will upload on Save/Update.</p>
+                <img src={URL.createObjectURL(imageFile)} alt="New preview" style={{ maxWidth: 240, maxHeight: 140, objectFit: "cover", borderRadius: 8, border: "1px solid #e2e8f0" }} />
+              </div>
+            )}
+            {imageUploadError && <p className="form-error">{imageUploadError}</p>}
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => {
+                const f = e.target.files[0] || null;
+                setImageFile(f);
+                setImageUploadError("");
+              }}
+            />
+            <p className="admin-form__note">JPG / PNG / WebP recommended. This image is what users see on the destination listing.</p>
+          </div>
+
           <button type="submit" className="btn btn-primary" disabled={saving}>
             {saving ? "Saving..." : editingId ? "Update Destination" : "Save Destination"}
           </button>
@@ -148,6 +197,7 @@ export default function AdminDestinations() {
               <thead>
                 <tr>
                   <th>ID</th>
+                  <th>Image</th>
                   <th>Name</th>
                   <th>City</th>
                   <th>Country</th>
@@ -159,6 +209,13 @@ export default function AdminDestinations() {
                 {destinations.map((destination) => (
                   <tr key={destination.id}>
                     <td>{destination.id}</td>
+                    <td>
+                      {destination.image ? (
+                        <img src={destination.image} alt={destination.name} style={{ width: 56, height: 36, objectFit: "cover", borderRadius: 6, border: "1px solid #e2e8f0" }} />
+                      ) : (
+                        <span style={{ color: "#94a3b8", fontSize: "0.78rem" }}>—</span>
+                      )}
+                    </td>
                     <td>{destination.name}</td>
                     <td>{destination.city}</td>
                     <td>{destination.country}</td>
