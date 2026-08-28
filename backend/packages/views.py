@@ -290,10 +290,14 @@ def package_availability(request, package_id):
 @parser_classes([MultiPartParser, FormParser])
 def add_package_image(request, package_id):
     package = get_object_or_404(TourPackage, id=package_id)
-    serializer = PackageImageSerializer(data=request.data)
+    serializer = PackageImageSerializer(data=request.data, context={"request": request})
     if serializer.is_valid():
         serializer.save(package=package)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        # Re-serialize with request context so `image` is an absolute URL (works on Vercel)
+        return Response(
+            PackageImageSerializer(serializer.instance, context={"request": request}).data,
+            status=status.HTTP_201_CREATED,
+        )
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
