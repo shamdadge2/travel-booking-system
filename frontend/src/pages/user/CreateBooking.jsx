@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useSearchParams, useNavigate, Link } from "react-router-dom";
-import { formatCurrency } from "../../utils/formatters";
+import { formatCurrency, formatDate } from "../../utils/formatters";
 import Loader from "../../components/Loader";
 import EmptyState from "../../components/EmptyState";
 import packageApi from "../../api/packageApi";
@@ -18,7 +18,6 @@ export default function CreateBooking() {
   const [loadError, setLoadError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
 
-  const [travelDate, setTravelDate] = useState("");
   const [travelers, setTravelers] = useState([{ ...EMPTY_TRAVELER }]);
   const [specialRequests, setSpecialRequests] = useState("");
   const [error, setError] = useState("");
@@ -73,20 +72,21 @@ export default function CreateBooking() {
     event.preventDefault();
     setError("");
 
-    if (!travelDate) {
-      setError("Please select a travel date.");
-      return;
-    }
     if (travelers.some((t) => !t.full_name || !t.age)) {
       setError("Please fill in at least full name and age for every traveler.");
       return;
     }
 
+    // Trip dates are fixed by the package — use start_date as travel_date.
+    // If package has no fixed dates, fall back to today (backend validates not in past).
+    const todayIso = new Date().toISOString().split("T")[0];
+    const fixedTravelDate = pkg.start_date && pkg.start_date >= todayIso ? pkg.start_date : pkg.start_date || todayIso;
+
     setSubmitting(true);
     try {
       const payload = {
         package: pkg.id,
-        travel_date: travelDate,
+        travel_date: fixedTravelDate,
         number_of_travelers: travelers.length,
         special_requests: specialRequests,
         travelers: travelers.map((t) => ({ ...t, age: Number(t.age) })),
@@ -121,16 +121,29 @@ export default function CreateBooking() {
         <div className="create-booking__main">
           <div className="card create-booking__section">
             <h3>Trip Details</h3>
-            <div className="form-group">
-              <label className="form-label" htmlFor="travel_date">Travel Date</label>
-              <input
-                id="travel_date"
-                type="date"
-                className="form-input"
-                min={new Date().toISOString().split("T")[0]}
-                value={travelDate}
-                onChange={(event) => setTravelDate(event.target.value)}
-              />
+            <div className="create-booking__fixed-dates">
+              {pkg.start_date || pkg.end_date ? (
+                <>
+                  <div className="create-booking__date-row">
+                    <span className="create-booking__date-icon">📅</span>
+                    <div>
+                      <div className="create-booking__date-value">
+                        {pkg.start_date ? formatDate(pkg.start_date) : "—"} {pkg.end_date ? `— ${formatDate(pkg.end_date)}` : ""}
+                      </div>
+                      <div className="create-booking__date-meta">
+                        {pkg.duration_days} Days / {pkg.duration_nights} Nights
+                        {pkg.pickup_location ? ` · Pickup: ${pkg.pickup_location}` : ""}
+                      </div>
+                    </div>
+                  </div>
+                  <p className="create-booking__fixed-note">Dates are fixed by this package — no need to pick a date. Your booking will be for the dates above.</p>
+                </>
+              ) : (
+                <>
+                  <div className="create-booking__date-value">Flexible dates</div>
+                  <p className="create-booking__fixed-note">This package has flexible dates — our team will confirm the exact departure after booking.</p>
+                </>
+              )}
             </div>
             <div className="form-group">
               <label className="form-label" htmlFor="special_requests">Special Requests (optional)</label>
@@ -138,6 +151,7 @@ export default function CreateBooking() {
                 id="special_requests"
                 rows="3"
                 className="form-textarea"
+                placeholder="Anything we should know? Dietary needs, accessibility, etc."
                 value={specialRequests}
                 onChange={(event) => setSpecialRequests(event.target.value)}
               />

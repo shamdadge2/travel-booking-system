@@ -109,17 +109,26 @@ class BookingCreateSerializer(serializers.Serializer):
     package = serializers.PrimaryKeyRelatedField(
         queryset=TourPackage.objects.filter(status=TourPackage.Status.PUBLISHED)
     )
-    travel_date = serializers.DateField()
+    travel_date = serializers.DateField(required=False, allow_null=True)
     number_of_travelers = serializers.IntegerField(min_value=1)
     special_requests = serializers.CharField(required=False, allow_blank=True, default="")
     travelers = TravelerInputSerializer(many=True)
 
     def validate_travel_date(self, value):
+        if value is None:
+            return value
         if value < date.today():
             raise serializers.ValidationError("travel_date cannot be in the past.")
         return value
 
     def validate(self, attrs):
+        # If travel_date wasn't sent (custom admin now hides it), default to the package's fixed start_date or today.
+        if not attrs.get("travel_date"):
+            pkg = attrs.get("package")
+            if pkg and pkg.start_date:
+                attrs["travel_date"] = pkg.start_date if pkg.start_date >= date.today() else date.today()
+            else:
+                attrs["travel_date"] = date.today()
         number_of_travelers = attrs["number_of_travelers"]
         travelers = attrs["travelers"]
         if len(travelers) != number_of_travelers:
