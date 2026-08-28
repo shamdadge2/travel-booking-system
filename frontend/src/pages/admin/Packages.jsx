@@ -235,8 +235,7 @@ function ImagesManager({ pkgId, images, onChange }) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
 
-  const handleUpload = async (event) => {
-    event.preventDefault();
+  const handleUpload = async () => {
     if (!file) {
       setError("Please choose an image file.");
       return;
@@ -253,7 +252,9 @@ function ImagesManager({ pkgId, images, onChange }) {
       setFile(null);
       setPlaceName("");
       setCaption("");
-      event.target.reset();
+      // Clear the file input (uncontrolled) so the same file can be selected again
+      const fileInput = document.querySelector(".admin-image-upload input[type='file']");
+      if (fileInput) fileInput.value = "";
     } catch (err) {
       const d = err.response?.data;
       const msg = d ? (typeof d === "string" ? d : Object.values(d).flat().join(" ") || JSON.stringify(d)) : err.message;
@@ -296,14 +297,14 @@ function ImagesManager({ pkgId, images, onChange }) {
         </div>
       )}
 
-      <form onSubmit={handleUpload} className="admin-image-upload">
+      <div className="admin-image-upload">
         <input type="file" accept="image/*" onChange={(e) => setFile(e.target.files[0])} />
         <input className="form-input" placeholder="Place name (e.g. Nubra Valley)" value={placeName} onChange={(e) => setPlaceName(e.target.value)} />
         <input className="form-input" placeholder="Short description" value={caption} onChange={(e) => setCaption(e.target.value)} />
-        <button type="submit" className="btn btn-outline" disabled={uploading}>
+        <button type="button" className="btn btn-outline" disabled={uploading} onClick={handleUpload}>
           {uploading ? "Uploading..." : "+ Add Photo"}
         </button>
-      </form>
+      </div>
     </div>
   );
 }
