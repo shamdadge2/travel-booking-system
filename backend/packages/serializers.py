@@ -21,6 +21,11 @@ class PackageImageSerializer(serializers.ModelSerializer):
     class Meta:
         model = PackageImage
         fields = ["id", "image", "place_name", "caption", "display_order"]
+        extra_kwargs = {
+            "display_order": {"required": False},
+            "place_name": {"required": False, "allow_blank": True},
+            "caption": {"required": False, "allow_blank": True},
+        }
 
 
 class PackageInclusionSerializer(serializers.ModelSerializer):
