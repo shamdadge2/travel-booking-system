@@ -114,7 +114,7 @@ button, input, textarea, select {
   width: 100%;
   max-width: var(--max-width);
   margin: 0 auto;
-  padding: 80px var(--space-lg) 0;
+  padding: 0 var(--space-lg);
 }
 
 /* Generic buttons — reused across every page instead of one-off styles */

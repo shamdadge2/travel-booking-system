@@ -32,7 +32,7 @@ export default function SearchResults() {
   }, [query]);
 
   return (
-    <div className="container">
+    <div className="container search-results">
       <div className="page-header">
         <h1>Search Results</h1>
         <p>
