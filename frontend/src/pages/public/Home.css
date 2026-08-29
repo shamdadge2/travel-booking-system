@@ -630,18 +630,37 @@
   .home-heading { font-size: 1.45rem; }
   .home-sub { font-size: 0.92rem; }
   .home-featured { padding-top: 28px; padding-bottom: 32px; }
-  /* Booking.com: packages as 1-col horizontal list */
+  /* Booking.com: packages as 1-col horizontal list — fix pill overflow */
   .home-pkg-grid { grid-template-columns: 1fr; gap: 12px; }
   .home-pkg-card { flex-direction: row; align-items: stretch; }
   .home-pkg-card__img-wrap { width: 138px; min-width: 138px; aspect-ratio: 1 / 1; flex-shrink: 0; }
+  .home-pkg-card__top { top: 8px; left: 8px; right: 8px; gap: 6px; }
+  .home-pkg-card__type, .home-pkg-card__sale { font-size: 0.60rem; padding: 4px 7px; letter-spacing: 0.06em; white-space: nowrap; max-width: 48%; overflow: hidden; text-overflow: ellipsis; line-height: 1; }
+  .home-pkg-card__type { flex-shrink: 1; min-width: 0; }
+  .home-pkg-card__sale { flex-shrink: 0; background: #fef3c7; color: #92400e; }
+  .home-pkg-card__rating { font-size: 0.68rem; padding: 4px 7px; bottom: 8px; left: 8px; }
   .home-pkg-card__body { padding: 12px; }
   .home-pkg-card__title { font-size: 0.96rem; }
   .home-pkg-card__desc { display: none; }
   .home-pkg-card__meta { font-size: 0.78rem; margin-bottom: 6px; }
   .home-pkg-card__price-new { font-size: 1rem; }
   .home-pkg-card__foot { padding-top: 8px; }
-  /* Booking.com: destinations stay 2-col on mobile */
-  .home-dest-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  /* Destinations: horizontal scroll snap row */
+  .home-dest-grid {
+    display: flex;
+    overflow-x: auto;
+    overflow-y: hidden;
+    flex-wrap: nowrap;
+    gap: 14px;
+    padding-bottom: 10px;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    scroll-padding: 0 16px;
+  }
+  .home-dest-grid::-webkit-scrollbar { display: none; }
+  .home-dest-card { flex: 0 0 76%; max-width: 280px; scroll-snap-align: start; }
+  .home-dest-card__img-wrap { aspect-ratio: 4 / 5; }
   .home-dest-card__title { font-size: 0.98rem; }
   .home-dest-card__meta, .home-dest-card__desc { font-size: 0.76rem; }
   .home-why-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
@@ -656,9 +675,12 @@
 @media (max-width: 480px) {
   .home-pkg-card__img-wrap { width: 118px; min-width: 118px; }
   .home-pkg-card__title { font-size: 0.9rem; }
+  .home-pkg-card__type, .home-pkg-card__sale { font-size: 0.56rem; padding: 3px 6px; max-width: 46%; }
+  .home-pkg-card__rating { font-size: 0.64rem; padding: 3px 6px; }
+  .home-dest-card { flex: 0 0 82%; max-width: 300px; }
 }
 @media (max-width: 380px) {
-  .home-dest-grid { grid-template-columns: 1fr; }
+  .home-dest-card { flex: 0 0 88%; }
   .home-hero__stats { gap: 10px; }
   .home-hero__stat-num { font-size: 1.15rem; }
   .home-why-grid { grid-template-columns: 1fr; }
