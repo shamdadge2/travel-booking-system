@@ -222,10 +222,16 @@
 }
 
 @media (max-width: 900px) {
-  .create-booking__grid {
-    grid-template-columns: 1fr;
-  }
-  .create-booking__summary {
-    position: static;
-  }
+  .create-booking__grid { grid-template-columns: 1fr; gap: 16px; }
+  .create-booking__summary { position: static; }
+}
+@media (max-width: 640px) {
+  .create-booking { padding-top: 80px; padding-bottom: 32px; }
+  .create-booking .page-header { padding: 16px 0 12px; }
+  .create-booking .page-header h1 { font-size: 1.45rem; }
+  .create-booking__section, .create-booking__summary { padding: 16px; border-radius: 14px; }
+  .create-booking__date-row { flex-direction: column; gap: 6px; }
+}
+@media (max-width: 480px) {
+  .create-booking__traveler-header { flex-direction: column; align-items: flex-start; gap: 8px; }
 }

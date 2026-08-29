@@ -50,8 +50,9 @@
   color: #fff;
 }
 
-.destination-card__meta {
-  font-size: var(--font-size-sm);
-  margin-bottom: 0;
-  color: #e5e7eb;
+.destination-card__meta { font-size: var(--font-size-sm); margin-bottom: 0; color: #e5e7eb; }
+@media (max-width: 640px) {
+  .destination-card__image-wrap { aspect-ratio: 4 / 3; }
+  .destination-card__title { font-size: 1rem; }
+  .destination-card__body { padding: 14px; }
 }

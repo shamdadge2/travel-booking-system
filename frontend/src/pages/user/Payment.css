@@ -225,7 +225,15 @@
 }
 
 @media (max-width: 860px) {
-  .payment-page__grid {
-    grid-template-columns: 1fr;
-  }
+  .payment-page__grid { grid-template-columns: 1fr; gap: 16px; }
+}
+@media (max-width: 640px) {
+  .payment-page { padding-top: 80px; padding-bottom: 32px; }
+  .payment-page .page-header h1 { font-size: 1.45rem; }
+  .payment-page__form, .payment-page__summary { padding: 16px; border-radius: 14px; }
+  .payment-page__result { margin: 24px auto; padding: 20px 16px; border-radius: 14px; }
+}
+@media (max-width: 480px) {
+  .payment-page__qr-img { width: 150px; height: 150px; }
+  .payment-page__method { font-size: 0.84rem; padding: 10px 12px; }
 }

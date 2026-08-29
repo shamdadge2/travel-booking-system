@@ -236,7 +236,16 @@
   font-weight: 700;
 }
 
-.json-import__or {
-  color: #64748b;
-  font-size: 0.85rem;
+.json-import__or { color: #64748b; font-size: 0.85rem; }
+@media (max-width: 768px) {
+  .admin-form { padding: 16px; border-radius: 14px; }
+  .admin-images-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+  .admin-image-upload { padding: 12px; }
+  .json-import { padding: 14px; }
+}
+@media (max-width: 480px) {
+  .admin-list-row { gap: 8px; }
+  .admin-list-row .form-input { font-size: 0.88rem; }
+  .admin-images-grid { grid-template-columns: 1fr 1fr; }
+  .admin-images-grid__item img { height: 110px; }
 }

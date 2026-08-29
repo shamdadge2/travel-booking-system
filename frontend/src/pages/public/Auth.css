@@ -12,6 +12,13 @@
   max-width: 420px;
   padding: var(--space-xl);
 }
+@media (max-width: 640px) {
+  .auth-page { padding: 80px 16px 32px; min-height: auto; }
+  .auth-card { padding: 20px 16px; border-radius: 16px; }
+}
+@media (max-width: 480px) {
+  .auth-card h1 { font-size: 1.25rem; }
+}
 
 .auth-card h1 {
   font-size: var(--font-size-xl);

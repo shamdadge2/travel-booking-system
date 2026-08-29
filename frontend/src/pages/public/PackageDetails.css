@@ -465,30 +465,23 @@
 }
 
 @media (max-width: 900px) {
-  .pkg-details__grid {
-    grid-template-columns: 1fr;
-  }
-  .pkg-details__sidebar {
-    position: static;
-  }
-  .places-gallery {
-    grid-template-columns: repeat(2, 1fr);
-  }
+  .pkg-details__grid { grid-template-columns: 1fr; gap: 20px; }
+  .pkg-details__sidebar { position: static; }
+  .places-gallery { grid-template-columns: repeat(2, 1fr); }
+  .pkg-details-body { padding: 24px 0 36px; }
 }
-
-@media (max-width: 560px) {
-  .pkg-details-hero {
-    min-height: 56vh;
-  }
-  .pkg-details-hero__inner {
-    padding-top: 24px;
-    padding-bottom: 28px;
-  }
-  .places-gallery {
-    grid-template-columns: 1fr;
-  }
-  .pkg-details__section {
-    padding: 18px 16px;
-    border-radius: 16px;
-  }
+@media (max-width: 640px) {
+  .pkg-details-hero { min-height: 48vh; min-height: 48dvh; padding-top: 58px; }
+  .pkg-details-hero__inner { padding-top: 18px; padding-bottom: 22px; gap: 12px; }
+  .pkg-details-hero__title { font-size: clamp(1.55rem, 6vw, 2.0rem); }
+  .pkg-details-hero__meta { font-size: 0.86rem; }
+  .pkg-details-hero__essential { font-size: 0.76rem; padding: 6px 10px; }
+  .pkg-details__price { font-size: 1.55rem; }
+  .itinerary-timeline li { flex-direction: column; gap: 4px; padding-left: 18px; }
+  .itinerary-timeline__day { min-width: 0; }
+}
+@media (max-width: 480px) {
+  .places-gallery { grid-template-columns: 1fr; }
+  .pkg-details__section { padding: 16px; border-radius: 14px; }
+  .places-gallery__item img { height: 180px; }
 }

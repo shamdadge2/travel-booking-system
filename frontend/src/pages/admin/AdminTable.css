@@ -135,3 +135,15 @@
   border-color: #0f7a6c;
   box-shadow: 0 0 0 3px rgba(0,229,204,0.15);
 }
+@media (max-width: 768px) {
+  .admin-page__header { gap: 12px; margin-bottom: 18px; }
+  .admin-page__header h1 { font-size: 1.45rem; }
+  .admin-table-wrap { border-radius: 14px; -webkit-overflow-scrolling: touch; }
+  .admin-table { font-size: 0.82rem; }
+  .admin-table th, .admin-table td { padding: 10px 12px; }
+  .admin-toolbar .form-input, .admin-toolbar .form-select { max-width: 100%; flex: 1; min-width: 180px; }
+}
+@media (max-width: 480px) {
+  .admin-page__header .btn-primary { width: 100%; justify-content: center; }
+  .admin-toolbar { gap: 10px; }
+}

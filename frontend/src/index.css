@@ -269,31 +269,34 @@ button, input, textarea, select {
   display: grid;
   gap: var(--space-lg);
 }
-.grid--packages {
-  grid-template-columns: repeat(3, 1fr);
-}
-.grid--destinations {
-  grid-template-columns: repeat(4, 1fr);
-}
+.grid--packages { grid-template-columns: repeat(3, 1fr); }
+.grid--destinations { grid-template-columns: repeat(4, 1fr); }
 
 @media (max-width: 1100px) {
-  .grid--packages {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  .grid--destinations {
-    grid-template-columns: repeat(3, 1fr);
-  }
+  .grid--packages { grid-template-columns: repeat(2, 1fr); }
+  .grid--destinations { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 860px) {
+  .grid--destinations { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 640px) {
-  .grid--packages,
-  .grid--destinations {
-    grid-template-columns: 1fr;
-  }
+  .grid--packages, .grid--destinations { grid-template-columns: 1fr; }
+  .form-row { flex-direction: column; gap: 0; }
 }
 
-@media (max-width: 640px) {
-  .form-row {
-    flex-direction: column;
-    gap: 0;
-  }
+/* ------- Global mobile polish ------- */
+@media (max-width: 768px) {
+  :root { --space-lg: 16px; --space-xl: 28px; --space-2xl: 40px; }
+  .container { padding: 0 16px; }
+  .page-header { padding: 24px 0 16px; }
+  .page-header h1 { font-size: 1.6rem; }
+  .section { padding: 28px 0; }
 }
+@media (max-width: 480px) {
+  .btn { padding: 10px 16px; font-size: 0.95rem; }
+  .form-input, .form-textarea, .form-select { font-size: 16px; }
+  .card { border-radius: 14px; }
+}
+* { min-width: 0; }
+html { overflow-x: clip; }
+body { overflow-x: clip; }

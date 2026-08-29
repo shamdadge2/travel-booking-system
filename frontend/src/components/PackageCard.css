@@ -66,10 +66,14 @@
   text-transform: capitalize;
 }
 
-.package-card__price-row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
+.package-card__price-row { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 6px; }
+@media (max-width: 640px) {
+  .package-card__image-wrap { aspect-ratio: 16 / 10; }
+  .package-card__title { font-size: 1rem; }
+  .package-card__body { padding: 14px; }
+}
+@media (max-width: 480px) {
+  .package-card { border-radius: 14px; }
 }
 
 .package-card__price-old {

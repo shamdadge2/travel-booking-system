@@ -1,6 +1,13 @@
 .destination-hero {
   height: 320px;
   background-color: var(--color-bg-alt);
+  overflow: hidden;
+}
+@media (max-width: 768px) { .destination-hero { height: 240px; } }
+@media (max-width: 480px) {
+  .destination-hero { height: 200px; }
+  .destination-hero__placeholder { font-size: 2.8rem; }
+  .destination-description { font-size: 0.94rem; margin-bottom: 24px; }
 }
 
 .destination-hero img {

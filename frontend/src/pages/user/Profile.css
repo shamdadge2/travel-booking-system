@@ -14,9 +14,15 @@
   margin-bottom: var(--space-md);
 }
 
-.profile-page__actions {
-  display: flex;
-  gap: var(--space-sm);
+.profile-page__actions { display: flex; gap: var(--space-sm); flex-wrap: wrap; }
+@media (max-width: 640px) {
+  .profile-page { padding-top: 80px; }
+  .profile-page__card { padding: 16px; border-radius: 14px; }
+  .profile-page__actions .btn { flex: 1; min-width: 120px; justify-content: center; }
+}
+@media (max-width: 480px) {
+  .profile-page__actions { flex-direction: column; }
+  .profile-page__actions .btn { width: 100%; }
 }
 
 .profile-page__hint {

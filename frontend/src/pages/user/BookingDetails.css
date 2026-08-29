@@ -228,10 +228,19 @@
 }
 
 @media (max-width: 860px) {
-  .bd-grid {
-    grid-template-columns: 1fr;
-  }
-  .bd-dl {
-    grid-template-columns: 120px 1fr;
-  }
+  .bd-grid { grid-template-columns: 1fr; }
+  .bd-dl { grid-template-columns: 120px 1fr; }
+}
+@media (max-width: 640px) {
+  .bd-hero { padding-top: 58px; }
+  .bd-hero__inner { padding-top: 20px; padding-bottom: 24px; }
+  .bd-hero__title { font-size: clamp(1.6rem, 6vw, 1.95rem); }
+  .bd-content { padding: 20px 0 32px; }
+  .bd-card { padding: 16px; border-radius: 14px; }
+  .bd-dl { grid-template-columns: 1fr; gap: 4px 0; }
+  .bd-dl dt { font-size: 0.78rem; }
+}
+@media (max-width: 480px) {
+  .bd-travelers li { font-size: 0.84rem; word-break: break-word; }
+  .bd-actions .bd-btn { padding: 13px; }
 }
