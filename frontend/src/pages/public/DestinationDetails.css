@@ -2,13 +2,17 @@
   height: 320px;
   background-color: var(--color-bg-alt);
   overflow: hidden;
+  width: 100%;
 }
+.destination-hero img { width: 100%; height: 100%; object-fit: cover; display: block; }
 @media (max-width: 768px) { .destination-hero { height: 240px; } }
+@media (max-width: 640px) { .destination-hero { height: 220px; } }
 @media (max-width: 480px) {
   .destination-hero { height: 200px; }
   .destination-hero__placeholder { font-size: 2.8rem; }
   .destination-description { font-size: 0.94rem; margin-bottom: 24px; }
 }
+@media (max-width: 360px) { .destination-hero { height: 180px; } }
 
 .destination-hero img {
   width: 100%;

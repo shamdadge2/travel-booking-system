@@ -21,6 +21,10 @@
   border-color: #f3c7c1;
 }
 
-.empty-state--error .empty-state__title {
-  color: var(--color-danger);
+.empty-state--error .empty-state__title { color: var(--color-danger); }
+@media (max-width: 640px) {
+  .empty-state { padding: 24px 16px; border-radius: 14px; }
+  .empty-state__title { font-size: 1rem; }
+  .empty-state__message { font-size: 0.88rem; }
 }
+@media (max-width: 480px) { .empty-state { padding: 20px 14px; } }

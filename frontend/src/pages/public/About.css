@@ -43,6 +43,17 @@
   margin-bottom: var(--space-md);
 }
 
-.about-page__developer strong {
-  color: var(--color-text);
+.about-page__developer strong { color: var(--color-text); }
+@media (max-width: 768px) {
+  .about-page { padding-top: 80px; }
+  .about-page__content { font-size: 0.94rem; }
+}
+@media (max-width: 640px) {
+  .about-page__stats { flex-direction: column; gap: 16px; margin-top: 24px; }
+  .about-page__stats { gap: 14px; }
+  .about-page__stat strong { font-size: 1.6rem; }
+  .about-page__developer { padding: 16px; border-radius: 14px; }
+}
+@media (max-width: 480px) {
+  .about-page__stat strong { font-size: 1.45rem; }
 }

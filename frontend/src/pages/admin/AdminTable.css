@@ -75,6 +75,13 @@
   white-space: nowrap;
   color: #334155;
   font-weight: 500;
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.admin-table td:last-child { white-space: nowrap; }
+@media (max-width: 640px) {
+  .admin-table td { max-width: 160px; }
 }
 
 .admin-table tr:last-child td {

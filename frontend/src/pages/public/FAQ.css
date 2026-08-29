@@ -33,7 +33,14 @@
   font-size: var(--font-size-lg);
 }
 
-.accordion__answer {
-  margin: var(--space-sm) 0 0 0;
-  color: var(--color-text-muted);
+.accordion__answer { margin: var(--space-sm) 0 0 0; color: var(--color-text-muted); }
+@media (max-width: 768px) { .faq-page { padding-top: 80px; } }
+@media (max-width: 640px) {
+  .faq-page { padding-left: 0; padding-right: 0; }
+  .accordion__item { padding: 14px 16px; border-radius: 14px; }
+  .accordion__question { font-size: 0.92rem; }
+  .accordion__answer { font-size: 0.88rem; }
+}
+@media (max-width: 480px) {
+  .accordion__item { padding: 12px 14px; }
 }

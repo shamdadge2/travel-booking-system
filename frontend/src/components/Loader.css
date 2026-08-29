@@ -18,8 +18,5 @@
   animation: loader-spin 0.7s linear infinite;
 }
 
-@keyframes loader-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
+@keyframes loader-spin { to { transform: rotate(360deg); } }
+@media (max-width: 640px) { .loader { padding: 32px 0; font-size: 0.82rem; } }

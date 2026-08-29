@@ -1,15 +1,38 @@
-import { useState } from "react";
-import { Link, NavLink } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, NavLink, useLocation } from "react-router-dom";
 import useAuth from "../hooks/useAuth";
 import "./Navbar.css";
 
+const TRANSPARENT_ROUTES = ["/", "/destinations", "/packages", "/contact", "/about", "/faq"];
+function isTransparentPath(pathname) {
+  if (TRANSPARENT_ROUTES.includes(pathname)) return true;
+  if (pathname.startsWith("/packages/") || pathname.startsWith("/destinations/")) return true;
+  return false;
+}
+
 export default function Navbar() {
   const { isAuthenticated, isStaffOrAdmin, user, logout } = useAuth();
+  const location = useLocation();
+  const isTransparent = isTransparentPath(location.pathname);
   const [open, setOpen] = useState(false);
   const close = () => setOpen(false);
 
+  useEffect(() => { close(); }, [location.pathname]);
+  useEffect(() => {
+    if (open) {
+      const prev = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => { document.body.style.overflow = prev; };
+    }
+  }, [open]);
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === "Escape") close(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   return (
-    <header className="navbar navbar--transparent">
+    <header className={`navbar ${isTransparent ? "navbar--transparent" : "navbar--solid"}`}>
       <div className="container navbar__inner">
         <Link to="/" className="navbar__brand" onClick={close}>
           Travel<span>Booking</span>
@@ -29,7 +52,7 @@ export default function Navbar() {
                 <Link to="/admin" className="btn navbar__btn-admin" onClick={close}>Admin</Link>
               )}
               <Link to="/my-bookings" className="navbar__link" onClick={close}>My Bookings</Link>
-              <Link to="/profile" className="navbar__link" onClick={close}>{user?.username || "Profile"}</Link>
+              <Link to="/profile" className="navbar__link navbar__link--user" onClick={close} title={user?.username}>{user?.username || "Profile"}</Link>
               <button className="btn navbar__btn-logout" onClick={() => { close(); logout(); }}>Logout</button>
             </>
           ) : (

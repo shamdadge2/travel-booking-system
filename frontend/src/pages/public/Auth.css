@@ -3,7 +3,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 100px var(--space-lg) var(--space-2xl);
+  padding: 40px var(--space-lg) var(--space-2xl);
   background-color: var(--color-bg-alt);
 }
 
@@ -13,11 +13,15 @@
   padding: var(--space-xl);
 }
 @media (max-width: 640px) {
-  .auth-page { padding: 80px 16px 32px; min-height: auto; }
-  .auth-card { padding: 20px 16px; border-radius: 16px; }
+  .auth-page { padding: 24px 16px 32px; min-height: auto; }
+  .auth-card { padding: 20px 16px; border-radius: 16px; width: 100%; }
 }
 @media (max-width: 480px) {
   .auth-card h1 { font-size: 1.25rem; }
+  .auth-card { padding: 18px 14px; }
+}
+@media (max-width: 360px) {
+  .auth-page { padding: 20px 14px 28px; }
 }
 
 .auth-card h1 {

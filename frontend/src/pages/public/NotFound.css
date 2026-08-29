@@ -1,12 +1,9 @@
-.not-found {
-  text-align: center;
-  padding: 100px var(--space-lg) var(--space-2xl);
-}
-
-.not-found h1 {
-  font-size: 5rem;
-  color: var(--color-primary);
-  margin-bottom: 0;
+.not-found { text-align: center; padding: 100px var(--space-lg) var(--space-2xl); }
+.not-found h1 { font-size: clamp(3rem, 12vw, 5rem); color: var(--color-primary); margin-bottom: 0; line-height: 1; }
+@media (max-width: 768px) { .not-found { padding: 80px 16px 40px; } }
+@media (max-width: 480px) {
+  .not-found { padding: 80px 16px 32px; }
+  .not-found p { font-size: 0.92rem; }
 }
 
 .not-found p {

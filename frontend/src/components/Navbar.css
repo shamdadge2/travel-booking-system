@@ -4,7 +4,30 @@
   z-index: 50;
   background-color: #fff;
   border-bottom: 1px solid var(--color-border);
-  transition: background-color 0.3s ease, border-color 0.3s ease;
+  transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+.navbar--solid {
+  position: sticky;
+  background: rgba(255,255,255,0.96);
+  backdrop-filter: blur(10px) saturate(1.2);
+  -webkit-backdrop-filter: blur(10px) saturate(1.2);
+  box-shadow: 0 1px 3px rgba(15,23,42,0.06);
+}
+.navbar--solid .navbar__toggle { background: #f1f5f9; border-color: #e2e8f0; }
+.navbar--solid .navbar__toggle span { background: #0f172a; }
+.navbar__username {
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-block;
+  vertical-align: middle;
+}
+.navbar__link--user {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .navbar--transparent {
@@ -89,13 +112,15 @@
 /* hamburger */
 .navbar__toggle {
   display: none; flex-direction: column; justify-content: center; gap: 5px;
-  width: 38px; height: 38px; padding: 6px; background: rgba(255,255,255,0.08);
+  width: 42px; height: 42px; padding: 8px; background: rgba(255,255,255,0.08);
   border: 1px solid rgba(255,255,255,0.14); border-radius: 10px; cursor: pointer; z-index: 3;
+  touch-action: manipulation;
 }
 .navbar__toggle span {
   display: block; height: 2px; background: #fff; border-radius: 2px;
   transition: transform 0.22s ease, opacity 0.22s ease, width 0.22s ease; width: 100%;
 }
+.navbar--solid .navbar__toggle span { background: #0f172a; }
 .navbar__toggle--open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
 .navbar__toggle--open span:nth-child(2) { opacity: 0; }
 .navbar__toggle--open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
@@ -111,26 +136,30 @@
 
   .navbar__links,
   .navbar__actions {
-    position: absolute; left: 0; right: 0; background: #0f172a;
+    position: fixed; left: 0; right: 0; background: #0f172a;
     border-bottom: 1px solid rgba(255,255,255,0.08);
     flex-direction: column; align-items: stretch; gap: 0;
-    padding: 10px 16px 14px; display: none; z-index: 2;
+    padding: 10px 16px 14px; display: none; z-index: 60;
     box-shadow: 0 18px 40px rgba(0,0,0,0.32);
+    max-height: calc(100dvh - 64px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
   .navbar__links { top: 64px; }
-  .navbar__actions { top: 228px; border-top: none; padding-top: 0; }
+  .navbar__actions { top: 220px; border-top: none; padding-top: 0; max-height: calc(100dvh - 220px); }
   .navbar__links--open, .navbar__actions--open { display: flex; }
 
   .navbar__links .navbar__link,
   .navbar__actions .navbar__link {
-    padding: 12px 8px; font-size: 0.95rem; border-radius: 10px; color: #e2e8f0 !important;
+    padding: 14px 10px; font-size: 0.95rem; border-radius: 10px; color: #e2e8f0 !important;
+    min-height: 44px; display: flex; align-items: center;
   }
   .navbar__links .navbar__link:hover,
   .navbar__actions .navbar__link:hover { background: rgba(255,255,255,0.06); color: #fff !important; }
   .navbar__actions .navbar__btn-admin,
   .navbar__actions .navbar__btn-signup,
   .navbar__actions .navbar__btn-logout {
-    width: 100%; justify-content: center; padding: 12px; font-size: 0.9rem; margin-top: 6px;
+    width: 100%; justify-content: center; padding: 13px; font-size: 0.9rem; margin-top: 6px; min-height: 44px;
   }
 }
 

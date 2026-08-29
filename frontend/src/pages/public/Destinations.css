@@ -208,33 +208,21 @@
 
 /* ---------- Responsive ---------- */
 @media (max-width: 860px) {
-  .dest-hero {
-    min-height: 46vh;
-  }
-  .dest-hero__inner {
-    padding-top: 36px;
-    padding-bottom: 40px;
-  }
+  .dest-hero { min-height: 46vh; }
+  .dest-hero__inner { padding-top: 32px; padding-bottom: 36px; }
 }
-
+@media (max-width: 768px) {
+  .dest-hero { min-height: 44vh; min-height: 44dvh; padding-top: 58px; }
+  .dest-content { padding: 24px 0 32px; }
+}
 @media (max-width: 640px) {
-  .dest-hero {
-    min-height: 50vh;
-  }
-  .dest-hero__inner {
-    padding-top: 28px;
-    padding-bottom: 36px;
-  }
-  .dest-hero__title {
-    font-size: clamp(1.95rem, 7.5vw, 2.6rem);
-  }
-  .dest-hero__desc {
-    font-size: 0.96rem;
-  }
-  .dest-hero__search {
-    max-width: 100%;
-  }
-  .dest-content {
-    padding: 28px 0 36px;
-  }
+  .dest-hero { min-height: 42vh; min-height: 42dvh; }
+  .dest-hero__inner { padding-top: 22px; padding-bottom: 28px; }
+  .dest-hero__title { font-size: clamp(1.65rem, 7vw, 2.1rem); }
+  .dest-hero__desc { font-size: 0.92rem; margin-bottom: 18px; }
+  .dest-hero__search { max-width: 100%; border-radius: 16px; }
+  .dest-hero__input { font-size: 0.9rem; }
+}
+@media (max-width: 480px) {
+  .dest-hero__search { padding: 4px 4px 4px 12px; }
 }
