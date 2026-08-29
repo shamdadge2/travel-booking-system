@@ -683,5 +683,9 @@
   .home-dest-card { flex: 0 0 88%; }
   .home-hero__stats { gap: 10px; }
   .home-hero__stat-num { font-size: 1.15rem; }
-  .home-why-grid { grid-template-columns: 1fr; }
+  .home-why-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .home-why-card { padding: 12px 10px; }
+  .home-why-card__icon { width: 42px; height: 42px; margin-bottom: 10px; }
+  .home-why-card h3 { font-size: 0.88rem; }
+  .home-why-card p { font-size: 0.78rem; line-height: 1.5; }
 }

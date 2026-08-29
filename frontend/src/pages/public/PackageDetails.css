@@ -481,7 +481,15 @@
   .itinerary-timeline__day { min-width: 0; }
 }
 @media (max-width: 480px) {
-  .places-gallery { grid-template-columns: 1fr; }
+  .places-gallery { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .places-gallery__item img { height: 120px; }
+  .places-gallery__caption { padding: 8px 10px; }
+  .places-gallery__caption h4 { font-size: 0.84rem; }
+  .places-gallery__caption p { font-size: 0.76rem; }
   .pkg-details__section { padding: 16px; border-radius: 14px; }
-  .places-gallery__item img { height: 180px; }
+}
+@media (max-width: 360px) {
+  .places-gallery { gap: 8px; }
+  .places-gallery__item img { height: 110px; }
+  .places-gallery__caption { padding: 7px 8px; }
 }

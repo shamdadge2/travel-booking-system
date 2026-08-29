@@ -1,22 +1,26 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import SocialIcons from "./SocialIcons";
 import "./Footer.css";
 
 export default function Footer() {
+  const { pathname } = useLocation();
+  const hideCta = pathname.startsWith("/packages") || pathname.startsWith("/destinations");
   return (
     <footer className="footer">
-      {/* Top CTA strip */}
-      <div className="footer__cta">
-        <div className="container footer__cta-inner">
-          <div className="footer__cta-text">
-            <h3>Ready for your next adventure?</h3>
-            <p>Discover handpicked Himalayan escapes, coastal retreats &amp; curated itineraries.</p>
+      {/* Top CTA strip — hidden on Packages & Destinations listing/detail pages */}
+      {!hideCta && (
+        <div className="footer__cta">
+          <div className="container footer__cta-inner">
+            <div className="footer__cta-text">
+              <h3>Ready for your next adventure?</h3>
+              <p>Discover handpicked Himalayan escapes, coastal retreats &amp; curated itineraries.</p>
+            </div>
+            <Link to="/packages" className="footer__cta-btn">
+              Explore Trips <span aria-hidden>→</span>
+            </Link>
           </div>
-          <Link to="/packages" className="footer__cta-btn">
-            Explore Trips <span aria-hidden>→</span>
-          </Link>
         </div>
-      </div>
+      )}
 
       <div className="container footer__inner">
         {/* Brand + contact */}
