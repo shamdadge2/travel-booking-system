@@ -26,6 +26,9 @@ class PaymentSerializer(serializers.ModelSerializer):
             "payment_method",
             "payment_status",
             "reference_number",
+            "razorpay_order_id",
+            "razorpay_payment_id",
+            "razorpay_signature",
             "paid_at",
             "created_at",
             "updated_at",
@@ -72,3 +75,13 @@ class PaymentReferenceSerializer(serializers.Serializer):
     """
 
     reference_number = serializers.CharField(max_length=100, allow_blank=False)
+
+
+class RazorpayOrderCreateSerializer(serializers.Serializer):
+    booking = serializers.PrimaryKeyRelatedField(queryset=Booking.objects.all())
+
+
+class RazorpayVerifySerializer(serializers.Serializer):
+    razorpay_order_id = serializers.CharField(max_length=100)
+    razorpay_payment_id = serializers.CharField(max_length=100)
+    razorpay_signature = serializers.CharField(max_length=255)

@@ -11,6 +11,8 @@ from accounts.permissions import is_staff_or_admin
 from bookings.models import Booking
 from config.pagination import StandardResultsPagination
 
+from django.conf import settings
+
 from .models import Payment, PaymentSettings, generate_transaction_id
 from .serializers import (
     PaymentCreateSerializer,
@@ -18,6 +20,8 @@ from .serializers import (
     PaymentReferenceSerializer,
     PaymentSerializer,
     PaymentSettingsSerializer,
+    RazorpayOrderCreateSerializer,
+    RazorpayVerifySerializer,
 )
 
 
@@ -236,3 +240,149 @@ def payment_settings(request):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     serializer.save()
     return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+# ---------------------------------------------------------------
+# POST /api/payments/create-razorpay-order/
+# Creates pending Payment + Razorpay order (amount in paise)
+# ---------------------------------------------------------------
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def create_razorpay_order(request):
+    serializer = RazorpayOrderCreateSerializer(data=request.data)
+    if not serializer.is_valid():
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    booking = serializer.validated_data["booking"]
+
+    if not (request.user == booking.user or is_staff_or_admin(request.user)):
+        return Response({"detail": "Booking not found."}, status=status.HTTP_404_NOT_FOUND)
+
+    if booking.payment_status == Booking.PaymentStatus.PAID:
+        return Response({"detail": "This booking has already been paid for."}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Reuse pending razorpay order if exists (avoid duplicate pending)
+    existing = Payment.objects.filter(
+        booking=booking, payment_status=Payment.PaymentStatus.PENDING, razorpay_order_id__isnull=False
+    ).exclude(razorpay_order_id="").first()
+    if existing and existing.razorpay_order_id:
+        return Response(
+            {
+                "payment": PaymentSerializer(existing).data,
+                "razorpay_order_id": existing.razorpay_order_id,
+                "amount": int(existing.amount * 100),
+                "currency": "INR",
+                "key_id": settings.RAZORPAY_KEY_ID,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    # Prevent duplicate pending without order id too
+    pending_exists = Payment.objects.filter(booking=booking, payment_status=Payment.PaymentStatus.PENDING).exists()
+    if pending_exists:
+        return Response(
+            {"detail": "A pending payment already exists for this booking. Please complete it or contact support."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if not settings.RAZORPAY_KEY_ID or not settings.RAZORPAY_KEY_SECRET:
+        return Response(
+            {"detail": "Razorpay is not configured on server. Set RAZORPAY_KEY_ID/SECRET in .env."},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+    try:
+        import razorpay
+
+        client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
+        razorpay_order = client.order.create(
+            {
+                "amount": int(booking.total_amount * 100),
+                "currency": "INR",
+                "receipt": booking.booking_reference,
+                "notes": {"booking_id": str(booking.id), "user_id": str(request.user.id)},
+            }
+        )
+    except Exception as e:
+        return Response({"detail": f"Failed to create Razorpay order: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    payment = Payment.objects.create(
+        booking=booking,
+        transaction_id=generate_transaction_id(),
+        amount=booking.total_amount,
+        payment_method=Payment.PaymentMethod.RAZORPAY,
+        razorpay_order_id=razorpay_order.get("id", ""),
+    )
+
+    return Response(
+        {
+            "payment": PaymentSerializer(payment).data,
+            "razorpay_order_id": razorpay_order["id"],
+            "amount": razorpay_order["amount"],
+            "currency": razorpay_order["currency"],
+            "key_id": settings.RAZORPAY_KEY_ID,
+        },
+        status=status.HTTP_201_CREATED,
+    )
+
+
+# ---------------------------------------------------------------
+# POST /api/payments/verify-razorpay/
+# Verifies signature and marks Payment + Booking as PAID
+# ---------------------------------------------------------------
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def verify_razorpay_payment(request):
+    serializer = RazorpayVerifySerializer(data=request.data)
+    if not serializer.is_valid():
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    data = serializer.validated_data
+    razorpay_order_id = data["razorpay_order_id"]
+    razorpay_payment_id = data["razorpay_payment_id"]
+    razorpay_signature = data["razorpay_signature"]
+
+    if not settings.RAZORPAY_KEY_ID or not settings.RAZORPAY_KEY_SECRET:
+        return Response({"detail": "Razorpay not configured."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    try:
+        import razorpay
+
+        client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
+        # Will raise SignatureVerificationError if invalid
+        client.utility.verify_payment_signature(
+            {
+                "razorpay_order_id": razorpay_order_id,
+                "razorpay_payment_id": razorpay_payment_id,
+                "razorpay_signature": razorpay_signature,
+            }
+        )
+    except Exception as e:
+        return Response({"detail": f"Payment verification failed: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        payment = Payment.objects.select_related("booking").get(razorpay_order_id=razorpay_order_id)
+    except Payment.DoesNotExist:
+        return Response({"detail": "Payment not found for this order."}, status=status.HTTP_404_NOT_FOUND)
+
+    if not _can_access_payment(request.user, payment):
+        return Response({"detail": "Payment not found."}, status=status.HTTP_404_NOT_FOUND)
+
+    if payment.payment_status == Payment.PaymentStatus.PAID:
+        return Response(PaymentSerializer(payment).data, status=status.HTTP_200_OK)
+
+    with transaction.atomic():
+        booking = Booking.objects.select_for_update().get(id=payment.booking_id)
+        payment.payment_status = Payment.PaymentStatus.PAID
+        payment.razorpay_payment_id = razorpay_payment_id
+        payment.razorpay_signature = razorpay_signature
+        payment.reference_number = razorpay_payment_id
+        payment.paid_at = timezone.now()
+        payment.save(update_fields=["payment_status", "razorpay_payment_id", "razorpay_signature", "reference_number", "paid_at", "updated_at"])
+
+        booking.payment_status = Booking.PaymentStatus.PAID
+        if booking.booking_status == Booking.BookingStatus.PENDING:
+            booking.booking_status = Booking.BookingStatus.CONFIRMED
+        booking.save(update_fields=["payment_status", "booking_status", "updated_at"])
+
+    return Response(PaymentSerializer(payment).data, status=status.HTTP_200_OK)

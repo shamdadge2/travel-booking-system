@@ -22,6 +22,8 @@ def generate_transaction_id():
 
 class Payment(models.Model):
     class PaymentMethod(models.TextChoices):
+        RAZORPAY = "razorpay", "Razorpay"
+        # Legacy (kept for existing rows, hidden on new payments)
         CARD = "card", "Card"
         UPI = "upi", "UPI"
         NETBANKING = "netbanking", "Net Banking"
@@ -42,19 +44,20 @@ class Payment(models.Model):
         max_digits=10, decimal_places=2, validators=[MinValueValidator(0)]
     )
 
-    payment_method = models.CharField(max_length=20, choices=PaymentMethod.choices)
+    payment_method = models.CharField(max_length=20, choices=PaymentMethod.choices, default=PaymentMethod.RAZORPAY)
     payment_status = models.CharField(
         max_length=20, choices=PaymentStatus.choices, default=PaymentStatus.PENDING
     )
     paid_at = models.DateTimeField(null=True, blank=True)
+    # Razorpay order/payment/signature - filled on create-order / verify
+    razorpay_order_id = models.CharField(max_length=100, blank=True, db_index=True)
+    razorpay_payment_id = models.CharField(max_length=100, blank=True)
+    razorpay_signature = models.CharField(max_length=255, blank=True)
     reference_number = models.CharField(
         max_length=100,
         blank=True,
         help_text=(
-            "UPI transaction reference/UTR number the customer provides after "
-            "paying. Used by an admin to manually verify the payment actually "
-            "arrived before marking it paid — customers cannot mark their own "
-            "UPI payment as paid."
+            "Legacy UPI reference. For Razorpay this stores razorpay_payment_id after verify."
         ),
     )
 

@@ -1,112 +1,100 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { formatCurrency } from "../../utils/formatters";
-import { buildUpiLink } from "../../utils/upi";
 import Loader from "../../components/Loader";
 import EmptyState from "../../components/EmptyState";
 import bookingApi from "../../api/bookingApi";
 import paymentApi from "../../api/paymentApi";
+import useAuth from "../../hooks/useAuth";
 import "./Payment.css";
 
-const METHODS = [
-  { value: "upi", label: "UPI (PhonePe / GPay / Paytm)" },
-  { value: "card", label: "Credit / Debit Card" },
-  { value: "netbanking", label: "Net Banking" },
-];
+function loadRazorpayScript() {
+  if (window.Razorpay) return Promise.resolve(true);
+  return new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.onload = () => resolve(true);
+    script.onerror = () => reject(new Error("Failed to load Razorpay SDK"));
+    document.body.appendChild(script);
+  });
+}
 
 export default function Payment() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const [booking, setBooking] = useState(null);
-  const [upiSettings, setUpiSettings] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
 
-  const [method, setMethod] = useState("upi");
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState("");
   const [paidPayment, setPaidPayment] = useState(null);
 
-  // UPI is a real money-movement flow, so it can't be self-confirmed:
-  // (1) create the pending payment and open the UPI app with the
-  // amount prefilled, (2) customer submits the UTR/reference number
-  // they got after paying, (3) an admin manually verifies the money
-  // actually arrived and marks it paid from the admin panel. The
-  // booking stays "pending" the whole time until that happens.
-  const [pendingUpiPayment, setPendingUpiPayment] = useState(null);
-  const [referenceNumber, setReferenceNumber] = useState("");
-  const [referenceSubmitted, setReferenceSubmitted] = useState(false);
-
   useEffect(() => {
-    Promise.all([
-      bookingApi.get(id),
-      paymentApi.getSettings().catch(() => null),
-    ])
-      .then(([bookingData, settingsData]) => {
-        setBooking(bookingData);
-        setUpiSettings(settingsData);
-      })
+    bookingApi
+      .get(id)
+      .then((data) => setBooking(data))
       .catch(() => setLoadError("Couldn't load this booking."))
       .finally(() => setIsLoading(false));
   }, [id]);
 
-  const handleUpiPay = async () => {
+  const handleRazorpayPay = async () => {
     setError("");
-    if (!upiSettings) {
-      setError("UPI payments aren't configured yet — please try Card or Net Banking, or contact support.");
-      return;
-    }
     setProcessing(true);
     try {
-      const payment = await paymentApi.create({ booking: booking.id, payment_method: "upi" });
-      setPendingUpiPayment(payment);
+      await loadRazorpayScript();
 
-      const upiLink = buildUpiLink({
-        payeeUpiId: upiSettings.upi_id,
-        payeeName: upiSettings.merchant_name,
-        amount: booking.total_amount,
-        note: `Booking ${booking.booking_reference}`,
+      const orderData = await paymentApi.createRazorpayOrder({ booking: booking.id });
+
+      const options = {
+        key: orderData.key_id,
+        amount: orderData.amount,
+        currency: orderData.currency || "INR",
+        name: "Travel Booking System",
+        description: `Booking ${booking.booking_reference} - ${booking.package.title}`,
+        order_id: orderData.razorpay_order_id,
+        prefill: {
+          name: user?.username || "",
+          email: user?.email || "",
+          contact: user?.phone || "",
+        },
+        notes: {
+          booking_id: String(booking.id),
+          booking_reference: booking.booking_reference,
+        },
+        theme: { color: "#0fb5a2" },
+        handler: async function (response) {
+          try {
+            const verified = await paymentApi.verifyRazorpay({
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+            });
+            setPaidPayment(verified);
+          } catch (verifyErr) {
+            setError(verifyErr.response?.data?.detail || "Payment verification failed. Contact support with payment ID: " + response.razorpay_payment_id);
+          } finally {
+            setProcessing(false);
+          }
+        },
+        modal: {
+          ondismiss: function () {
+            setProcessing(false);
+          },
+        },
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.on("payment.failed", function (resp) {
+        setError(resp.error?.description || "Payment failed. Please try again.");
+        setProcessing(false);
       });
-      // Navigating to a upi:// URL opens the phone's UPI app chooser
-      // with the amount already filled in.
-      window.location.href = upiLink;
+      rzp.open();
     } catch (err) {
-      setError(err.response?.data?.detail || "Couldn't start the UPI payment. Please try again.");
-    } finally {
-      setProcessing(false);
-    }
-  };
-
-  const handleSubmitReference = async (event) => {
-    event.preventDefault();
-    setError("");
-    if (!referenceNumber.trim()) {
-      setError("Please enter the UPI transaction reference (UTR) number from your payment app.");
-      return;
-    }
-    setProcessing(true);
-    try {
-      await paymentApi.submitReference(pendingUpiPayment.id, { reference_number: referenceNumber.trim() });
-      setReferenceSubmitted(true);
-    } catch (err) {
-      setError(err.response?.data?.detail || "Couldn't submit your reference number.");
-    } finally {
-      setProcessing(false);
-    }
-  };
-
-  const handleMockPay = async (event) => {
-    event.preventDefault();
-    setError("");
-    setProcessing(true);
-    try {
-      const payment = await paymentApi.create({ booking: booking.id, payment_method: method });
-      const processed = await paymentApi.process(payment.id, { simulate_result: "success" });
-      setPaidPayment(processed);
-    } catch (err) {
-      setError(err.response?.data?.detail || "Payment failed. Please try again.");
-    } finally {
+      const msg = err.response?.data?.detail || err.message || "Couldn't start Razorpay payment. Check if Razorpay is configured on server.";
+      setError(msg);
       setProcessing(false);
     }
   };
@@ -128,7 +116,7 @@ export default function Payment() {
           <h2>Payment Confirmed</h2>
           <p>
             Your booking {booking.booking_reference} has been confirmed and paid.
-            Transaction: {paidPayment.transaction_id}
+            Transaction: {paidPayment.transaction_id} {paidPayment.razorpay_payment_id && `· Razorpay: ${paidPayment.razorpay_payment_id}`}
           </p>
           <button className="btn btn-primary" onClick={() => navigate(`/my-bookings/${id}`)}>
             View Booking
@@ -151,171 +139,47 @@ export default function Payment() {
     );
   }
 
-  // Step 3: reference submitted — now genuinely waiting on an admin,
-  // not a fake auto-confirm.
-  if (referenceSubmitted) {
-    return (
-      <div className="container payment-page">
-        <div className="card payment-page__result">
-          <h2>Payment Under Verification</h2>
-          <p>
-            Thanks — we've recorded your transaction reference. Our team will verify the payment
-            arrived and confirm your booking shortly. You can check the status any time in{" "}
-            <Link to={`/my-bookings/${id}`}>My Bookings</Link>.
-          </p>
-          <button className="btn btn-primary" onClick={() => navigate(`/my-bookings/${id}`)}>
-            View Booking Status
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // Step 2: waiting for the customer to come back from their UPI app
-  // and tell us the reference number.
-  if (pendingUpiPayment) {
-    return (
-      <div className="container payment-page">
-        <div className="card payment-page__result">
-          <h2>Complete your payment</h2>
-          <p>
-            We opened your UPI app with {formatCurrency(booking.total_amount)} ready to send to{" "}
-            {upiSettings?.merchant_name}. Once you've paid, enter the transaction reference (UTR)
-            number from your UPI app below so we can verify it.
-          </p>
-          {error && <p className="form-error">{error}</p>}
-          <form onSubmit={handleSubmitReference}>
-            <div className="form-group">
-              <label className="form-label" htmlFor="reference_number">UPI Transaction Reference (UTR)</label>
-              <input
-                id="reference_number"
-                className="form-input"
-                placeholder="e.g. 402512345678"
-                value={referenceNumber}
-                onChange={(event) => setReferenceNumber(event.target.value)}
-              />
-            </div>
-            <button type="submit" className="btn btn-primary btn-block" disabled={processing}>
-              {processing ? "Submitting..." : "Submit for Verification"}
-            </button>
-          </form>
-          <button
-            type="button"
-            className="btn btn-outline btn-block payment-page__retry"
-            onClick={handleUpiPay}
-            disabled={processing}
-          >
-            Reopen UPI App
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="container payment-page">
       <div className="page-header">
         <h1>Payment</h1>
         <p>
-          <Link to={`/my-bookings/${id}`}>&larr; Back to booking</Link> &middot; Booking{" "}
-          {booking.booking_reference} &middot; {booking.package.title}
+          <Link to={`/my-bookings/${id}`}>&larr; Back to booking</Link> &middot; Booking {booking.booking_reference} &middot; {booking.package.title}
         </p>
       </div>
 
-      {error && <p className="form-error">{error}</p>}
+      {error && <p className="form-error" style={{ marginBottom: 12 }}>{error}</p>}
 
       <div className="payment-page__grid">
         <div className="card payment-page__form">
-          <h3>Choose Payment Method</h3>
-          <div className="payment-page__methods">
-            {METHODS.map((m) => (
-              <label key={m.value} className={`payment-page__method ${method === m.value ? "payment-page__method--active" : ""}`}>
-                <input
-                  type="radio"
-                  name="method"
-                  value={m.value}
-                  checked={method === m.value}
-                  onChange={() => setMethod(m.value)}
-                />
-                {m.label}
-              </label>
-            ))}
+          <h3>Secure Payment via Razorpay</h3>
+          <p className="payment-page__mock-note" style={{ marginBottom: 14 }}>
+            Pay securely with UPI, Cards, Net Banking, Wallets via Razorpay. Test Mode is FREE — use test card <code>4111 1111 1111 1111</code> or UPI <code>success@razorpay</code>.
+          </p>
+
+          <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 12, padding: 14, marginBottom: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+              <span style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, padding: "6px 10px", fontSize: "0.82rem", fontWeight: 700 }}>Razorpay Secure</span>
+              <span style={{ fontSize: "0.82rem", color: "#64748b" }}>UPI • Card • NetBanking • Wallet</span>
+            </div>
+            <p style={{ fontSize: "0.84rem", color: "#475569", margin: 0, lineHeight: 1.5 }}>
+              You will be redirected to Razorpay's secure checkout to complete payment of <strong>{formatCurrency(booking.total_amount)}</strong>.
+            </p>
           </div>
 
-          {method === "upi" ? (
-            <>
-              {upiSettings ? (
-                <div className="payment-page__upi-box">
-                  {(() => {
-                    const previewLink = buildUpiLink({
-                      payeeUpiId: upiSettings.upi_id,
-                      payeeName: upiSettings.merchant_name,
-                      amount: booking.total_amount,
-                      note: `Booking ${booking.booking_reference}`,
-                    });
-                    const qrSrc = upiSettings.qr_image
-                      ? upiSettings.qr_image
-                      : `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(previewLink)}`;
-                    return (
-                      <>
-                        <div className="payment-page__qr-wrap">
-                          <img src={qrSrc} alt="UPI QR code" className="payment-page__qr-img" />
-                        </div>
-                        <div className="payment-page__upi-details">
-                          <p><strong>UPI ID:</strong> {upiSettings.upi_id}</p>
-                          <p><strong>Payee:</strong> {upiSettings.merchant_name}</p>
-                          <p><strong>Amount:</strong> {formatCurrency(booking.total_amount)} — Booking {booking.booking_reference}</p>
-                        </div>
-                        <p className="payment-page__qr-note">Scan with any UPI app (PhonePe, GPay, Paytm) or tap the button to open the app directly. Your booking stays <strong>pending</strong> until our admin verifies the payment.</p>
-                      </>
-                    );
-                  })()}
-                </div>
-              ) : (
-                <p className="payment-page__mock-note" style={{ color: "#dc2626" }}>
-                  UPI not configured yet — please contact support or use Card/Net Banking (demo).
-                </p>
-              )}
-              <p className="payment-page__mock-note">
-                After paying in your UPI app, you'll submit the UTR reference for verification — booking is confirmed only after admin checks it.
-              </p>
-              <button
-                type="button"
-                className="btn btn-primary btn-block"
-                onClick={handleUpiPay}
-                disabled={processing || !upiSettings}
-              >
-                {processing ? "Opening UPI app..." : `Pay ${formatCurrency(booking.total_amount)} via UPI App`}
-              </button>
-              <p className="payment-page__mock-note" style={{ textAlign: "center", marginTop: 8 }}>or scan the QR above with your UPI app</p>
-            </>
-          ) : (
-            <form onSubmit={handleMockPay}>
-              {method === "card" && (
-                <div className="form-group">
-                  <label className="form-label">Card Number</label>
-                  <input className="form-input" placeholder="4242 4242 4242 4242" />
-                </div>
-              )}
-              {method === "netbanking" && (
-                <div className="form-group">
-                  <label className="form-label">Select Bank</label>
-                  <select className="form-select">
-                    <option>State Bank</option>
-                    <option>HDFC Bank</option>
-                    <option>ICICI Bank</option>
-                  </select>
-                </div>
-              )}
-              <p className="payment-page__mock-note">
-                This is a mock payment gateway for demo purposes — no real card/bank details are
-                processed. The booking and payment records themselves are real.
-              </p>
-              <button type="submit" className="btn btn-primary btn-block" disabled={processing}>
-                {processing ? "Processing..." : `Pay ${formatCurrency(booking.total_amount)}`}
-              </button>
-            </form>
-          )}
+          <button
+            type="button"
+            className="btn btn-primary btn-block"
+            onClick={handleRazorpayPay}
+            disabled={processing}
+            style={{ minHeight: 48, fontSize: "1rem" }}
+          >
+            {processing ? "Opening Razorpay..." : `Pay ${formatCurrency(booking.total_amount)} with Razorpay`}
+          </button>
+
+          <p className="payment-page__mock-note" style={{ textAlign: "center", marginTop: 10, fontSize: "0.78rem" }}>
+            256-bit SSL • RBI compliant • No card details stored on our servers
+          </p>
         </div>
 
         <aside className="card payment-page__summary">
@@ -324,10 +188,17 @@ export default function Payment() {
             <span>{booking.package.title}</span>
             <span>{formatCurrency(booking.total_amount)}</span>
           </div>
+          <div className="payment-page__summary-row" style={{ color: "#94a3b8", fontSize: "0.82rem" }}>
+            <span>Booking Ref</span>
+            <span style={{ fontFamily: "monospace", fontWeight: 700 }}>{booking.booking_reference}</span>
+          </div>
           <div className="payment-page__summary-total">
             <span>Total</span>
             <span>{formatCurrency(booking.total_amount)}</span>
           </div>
+          <p style={{ fontSize: "0.78rem", color: "#94a3b8", marginTop: 10, textAlign: "center" }}>
+            By clicking Pay you agree to Razorpay Terms
+          </p>
         </aside>
       </div>
     </div>

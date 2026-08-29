@@ -74,7 +74,7 @@ export default function Home() {
             <p className="home-hero__desc">
               Discover breathtaking destinations, curated trips, and unforgettable travel experiences designed for explorers.
             </p>
-            <button className="home-hero__cta" onClick={() => navigate("/packages")} type="button">
+            <button className="home-hero__cta" onClick={() => navigate("/destinations")} type="button">
               Start Exploring
             </button>
           </div>

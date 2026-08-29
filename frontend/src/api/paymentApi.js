@@ -8,6 +8,9 @@ const paymentApi = {
   submitReference: (id, payload) => api.post(`/payments/${id}/reference/`, payload).then((res) => res.data),
   getSettings: () => api.get("/payments/settings/").then((res) => res.data),
   updateSettings: (payload) => api.put("/payments/settings/", payload).then((res) => res.data),
+  // Razorpay (new)
+  createRazorpayOrder: (payload) => api.post("/payments/create-razorpay-order/", payload).then((res) => res.data),
+  verifyRazorpay: (payload) => api.post("/payments/verify-razorpay/", payload).then((res) => res.data),
 };
 
 export default paymentApi;

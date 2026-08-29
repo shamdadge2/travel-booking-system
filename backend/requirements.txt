@@ -13,3 +13,4 @@ google-auth==2.56.3
 requests==2.32.3
 cloudinary>=1.36.0
 django-cloudinary-storage>=0.3.0
+razorpay>=1.4.1
