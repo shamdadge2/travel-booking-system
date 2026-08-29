@@ -210,7 +210,7 @@
   color: rgba(255,255,255,0.18);
 }
 
-/* Social icons inside dark footer — make them subtle pills */
+/* Social icons inside dark footer — make them subtle pills, icon perfectly centered in circle */
 .footer .social-icons {
   gap: 8px;
 }
@@ -222,6 +222,24 @@
   background: rgba(255,255,255,0.06);
   border: 1px solid rgba(255,255,255,0.08);
   color: #cbd5e1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.footer .social-icons__link .social-icons__icon {
+  width: 16px;
+  height: 16px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.footer .social-icons__link .social-icons__icon svg {
+  width: 16px;
+  height: 16px;
+  display: block;
 }
 
 .footer .social-icons__link:hover {
@@ -268,9 +286,7 @@
   .footer__cta-btn { width: 100%; justify-content: center; min-height: 42px; }
   /* Mobile only: brand full-width on top, Explore/Company/Account in ONE row (3 cols) */
   .footer__inner { grid-template-columns: repeat(3, 1fr); padding: 18px 0 14px; gap: 16px 10px; }
-  .footer__bottom-inner { flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center; }
-  .footer__copy { text-align: center; width: 100%; }
-  .footer__credit { justify-content: center; width: 100%; }
+  .footer__bottom-inner { flex-direction: column; align-items: flex-start; gap: 8px; text-align: left; }
   .footer__contact a { word-break: break-all; }
   .footer__col a { word-break: break-word; }
 }
@@ -284,7 +300,7 @@
   .footer__col h4 { font-size: 0.66rem; letter-spacing: 0.08em; margin-bottom: 8px; }
   .footer__col a { font-size: 0.78rem; margin-bottom: 6px; }
   .footer__bottom { font-size: 0.78rem; padding: 10px 0; }
-  .footer__bottom-inner { gap: 8px; align-items: center; justify-content: center; text-align: center; }
+  .footer__bottom-inner { gap: 6px; align-items: flex-start; text-align: left; }
 }
 
 @media (max-width: 360px) {
