@@ -73,17 +73,9 @@ export default function Destinations() {
         </div>
       </section>
 
-      {/* Content - card grid unchanged in size/arrangement */}
+      {/* Content - card grid */}
       <section className="dest-content">
         <div className="container">
-          {!isLoading && !error && destinations.length > 0 && (
-            <div className="dest-content__head">
-              <p className="dest-content__count">
-                Showing <strong>{destinations.length}</strong> destination{destinations.length !== 1 ? "s" : ""}
-                {search ? <> for “{search}”</> : null}
-              </p>
-            </div>
-          )}
 
           {isLoading ? (
             <Loader label="Loading destinations..." />

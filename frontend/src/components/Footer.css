@@ -266,22 +266,25 @@
 @media (max-width: 560px) {
   .footer__cta-inner { flex-direction: column; align-items: stretch; gap: 10px; padding: 14px 0; }
   .footer__cta-btn { width: 100%; justify-content: center; min-height: 42px; }
-  .footer__inner { grid-template-columns: 1fr 1fr; padding: 18px 0 14px; gap: 18px 14px; }
-  .footer__bottom-inner { flex-direction: column; align-items: flex-start; gap: 8px; }
+  /* Mobile only: brand full-width on top, Explore/Company/Account in ONE row (3 cols) */
+  .footer__inner { grid-template-columns: repeat(3, 1fr); padding: 18px 0 14px; gap: 16px 10px; }
+  .footer__bottom-inner { flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center; }
+  .footer__copy { text-align: center; width: 100%; }
+  .footer__credit { justify-content: center; width: 100%; }
   .footer__contact a { word-break: break-all; }
   .footer__col a { word-break: break-word; }
 }
 
 @media (max-width: 480px) {
-  .footer__inner { grid-template-columns: 1fr 1fr; gap: 16px 12px; padding: 16px 0 12px; }
+  .footer__inner { grid-template-columns: repeat(3, 1fr); gap: 14px 8px; padding: 16px 0 12px; }
   .footer__col--brand { grid-column: 1 / -1; padding-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,0.06); margin-bottom: 2px; }
   .footer__brand { font-size: 1.18rem; }
   .footer__cta-text h3 { font-size: 1rem; }
   .footer__cta-text p { font-size: 0.82rem; }
-  .footer__col h4 { font-size: 0.68rem; letter-spacing: 0.10em; margin-bottom: 8px; }
-  .footer__col a { font-size: 0.82rem; margin-bottom: 7px; }
+  .footer__col h4 { font-size: 0.66rem; letter-spacing: 0.08em; margin-bottom: 8px; }
+  .footer__col a { font-size: 0.78rem; margin-bottom: 6px; }
   .footer__bottom { font-size: 0.78rem; padding: 10px 0; }
-  .footer__bottom-inner { gap: 6px; }
+  .footer__bottom-inner { gap: 8px; align-items: center; justify-content: center; text-align: center; }
 }
 
 @media (max-width: 360px) {

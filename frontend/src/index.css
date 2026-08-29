@@ -298,8 +298,11 @@ h3 { font-size: clamp(1.05rem, 2.2vw, 1.25rem); }
   .form-row { flex-direction: column; gap: 0; }
 }
 @media (max-width: 380px) {
-  .grid--destinations { grid-template-columns: 1fr; }
+  .grid--destinations { grid-template-columns: repeat(2, 1fr); gap: 10px; }
   .grid--packages { gap: 10px; }
+}
+@media (max-width: 340px) {
+  .grid--destinations { gap: 8px; }
 }
 
 /* ------- Global mobile polish ------- */

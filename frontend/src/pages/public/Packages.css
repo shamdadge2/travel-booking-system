@@ -252,12 +252,17 @@
 @media (max-width: 640px) {
   .pkg-hero__title { font-size: clamp(1.65rem, 7vw, 2.1rem); }
   .pkg-hero__desc { font-size: 0.92rem; margin-bottom: 18px; }
-  .pkg-hero__selects { flex-direction: column; gap: 10px; }
-  .pkg-hero__select { padding: 11px 32px 11px 14px; font-size: 0.88rem; }
+  /* Mobile only: make All Types / Sort by compact */
+  .pkg-hero__selects { flex-direction: column; gap: 8px; }
+  .pkg-hero__select { padding: 9px 30px 9px 12px; font-size: 0.82rem; line-height: 1.2; min-height: 38px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.10); }
   .pkg-hero__search { border-radius: 16px; }
+  .pkg-hero__input { padding: 8px 6px; font-size: 0.88rem; }
+  .pkg-hero__search-icon { width: 16px; height: 16px; }
+  .pkg-hero__clear { width: 28px; height: 28px; font-size: 0.78rem; }
   .pkg-content__head { margin-bottom: 14px; }
 }
 @media (max-width: 480px) {
-  .pkg-hero__input { font-size: 0.9rem; }
-  .pkg-hero__search { padding: 4px 4px 4px 12px; }
+  .pkg-hero__input { font-size: 0.86rem; }
+  .pkg-hero__search { padding: 4px 4px 4px 10px; }
+  .pkg-hero__select { padding: 8px 28px 8px 11px; font-size: 0.80rem; min-height: 36px; }
 }

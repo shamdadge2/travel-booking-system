@@ -144,6 +144,9 @@ export default function Home() {
                 <div className="home-pkg-grid">
                   {featuredPackages.slice(0, 6).map((pkg) => {
                     const effectivePrice = pkg.is_discounted ? pkg.discount_price : pkg.price;
+                    const discountPercent = pkg.is_discounted && Number(pkg.price) > 0
+                      ? Math.round(((Number(pkg.price) - Number(pkg.discount_price)) / Number(pkg.price)) * 100)
+                      : 0;
                     return (
                       <Link key={pkg.id} to={`/packages/${pkg.id}`} className="home-pkg-card">
                         <div className="home-pkg-card__img-wrap">
@@ -156,7 +159,7 @@ export default function Home() {
                           )}
                           <div className="home-pkg-card__top">
                             <span className="home-pkg-card__type">{pkg.package_type}</span>
-                            {pkg.is_discounted && <span className="home-pkg-card__sale">Save {formatCurrency(Number(pkg.price) - Number(pkg.discount_price))}</span>}
+                            {pkg.is_discounted && discountPercent > 0 && <span className="home-pkg-card__sale">{discountPercent}% OFF</span>}
                           </div>
                           {pkg.average_rating != null && (
                             <span className="home-pkg-card__rating">
