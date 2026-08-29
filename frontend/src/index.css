@@ -280,8 +280,12 @@ button, input, textarea, select {
   .grid--destinations { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 640px) {
-  .grid--packages, .grid--destinations { grid-template-columns: 1fr; }
+  .grid--packages { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .grid--destinations { grid-template-columns: repeat(2, 1fr); gap: 12px; }
   .form-row { flex-direction: column; gap: 0; }
+}
+@media (max-width: 480px) {
+  .grid--packages, .grid--destinations { grid-template-columns: 1fr; }
 }
 
 /* ------- Global mobile polish ------- */
