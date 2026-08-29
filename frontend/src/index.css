@@ -280,12 +280,14 @@ button, input, textarea, select {
   .grid--destinations { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 640px) {
-  .grid--packages { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  /* Booking.com: packages as 1-col list (card itself is horizontal), destinations 2-col grid */
+  .grid--packages { grid-template-columns: 1fr; gap: 12px; }
   .grid--destinations { grid-template-columns: repeat(2, 1fr); gap: 12px; }
   .form-row { flex-direction: column; gap: 0; }
 }
-@media (max-width: 480px) {
-  .grid--packages, .grid--destinations { grid-template-columns: 1fr; }
+@media (max-width: 380px) {
+  .grid--destinations { grid-template-columns: 1fr; }
+  .grid--packages { gap: 10px; }
 }
 
 /* ------- Global mobile polish ------- */

@@ -630,11 +630,17 @@
   .home-heading { font-size: 1.45rem; }
   .home-sub { font-size: 0.92rem; }
   .home-featured { padding-top: 28px; padding-bottom: 32px; }
-  .home-pkg-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  /* Booking.com: packages as 1-col horizontal list */
+  .home-pkg-grid { grid-template-columns: 1fr; gap: 12px; }
+  .home-pkg-card { flex-direction: row; align-items: stretch; }
+  .home-pkg-card__img-wrap { width: 138px; min-width: 138px; aspect-ratio: 1 / 1; flex-shrink: 0; }
+  .home-pkg-card__body { padding: 12px; }
   .home-pkg-card__title { font-size: 0.96rem; }
-  .home-pkg-card__desc { font-size: 0.82rem; -webkit-line-clamp: 2; }
-  .home-pkg-card__body { padding: 12px 12px 10px; }
+  .home-pkg-card__desc { display: none; }
+  .home-pkg-card__meta { font-size: 0.78rem; margin-bottom: 6px; }
   .home-pkg-card__price-new { font-size: 1rem; }
+  .home-pkg-card__foot { padding-top: 8px; }
+  /* Booking.com: destinations stay 2-col on mobile */
   .home-dest-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
   .home-dest-card__title { font-size: 0.98rem; }
   .home-dest-card__meta, .home-dest-card__desc { font-size: 0.76rem; }
@@ -648,15 +654,11 @@
   .home-cta__btn, .home-cta__btn-ghost { width: 100%; justify-content: center; }
 }
 @media (max-width: 480px) {
-  .home-pkg-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
-  .home-pkg-card { border-radius: 14px; }
-  .home-pkg-card__img-wrap { aspect-ratio: 1.15 / 1; }
-  .home-pkg-card__title { font-size: 0.9rem; -webkit-line-clamp: 2; }
-  .home-pkg-card__desc { display: none; }
-  .home-pkg-card__foot { padding-top: 8px; }
+  .home-pkg-card__img-wrap { width: 118px; min-width: 118px; }
+  .home-pkg-card__title { font-size: 0.9rem; }
 }
 @media (max-width: 380px) {
-  .home-pkg-grid, .home-dest-grid { grid-template-columns: 1fr; }
+  .home-dest-grid { grid-template-columns: 1fr; }
   .home-hero__stats { gap: 10px; }
   .home-hero__stat-num { font-size: 1.15rem; }
   .home-why-grid { grid-template-columns: 1fr; }
