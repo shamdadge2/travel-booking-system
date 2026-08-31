@@ -28,6 +28,8 @@ export default function CreateIndependentBooking() {
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [availability, setAvailability] = useState(null);
+  const [selectedMap, setSelectedMap] = useState({}); // option_group -> PackageService id
+  const [hotelBudget, setHotelBudget] = useState("all"); // all | budget | standard | luxury
 
   useEffect(() => {
     if (!packageId) {
@@ -41,6 +43,15 @@ export default function CreateIndependentBooking() {
         return;
       }
       setPkg(data);
+      // init selectedMap from default options
+      if (data.price_breakdown?.option_groups) {
+        const init = {};
+        Object.entries(data.price_breakdown.option_groups).forEach(([group, opts]) => {
+          const def = opts.find((o) => o.is_default_selected) || opts[0];
+          if (def) init[group] = def.id;
+        });
+        setSelectedMap(init);
+      }
       // default travel date to first available
       if (data.travel_dates && data.travel_dates.length > 0) {
         const firstAvail = data.travel_dates.find((d) => d.status === "available") || data.travel_dates[0];
@@ -51,21 +62,19 @@ export default function CreateIndependentBooking() {
     }).catch(() => setLoadError("Couldn't load this package.")).finally(() => setIsLoading(false));
   }, [packageId]);
 
-  // fetch price breakdown whenever travelers or coupon changes
+  // fetch price breakdown whenever travelers or coupon or selection changes
   useEffect(() => {
     if (!pkg) return;
     const travelersCount = travelers.length;
-    const params = { travelers: travelersCount };
-    if (couponCode) params.coupon_code = couponCode;
-    // Use POST for coupon calc; also handle date? price calc not date dependent
-    packageApi.priceCalculate(pkg.id, { travelers: travelersCount, coupon_code: couponCode || undefined })
+    const selectedIds = Object.values(selectedMap);
+    packageApi.priceCalculate(pkg.id, { travelers: travelersCount, coupon_code: couponCode || undefined, selected_services: selectedIds.length ? selectedIds : undefined })
       .then((data) => {
         setPrice(data);
         setCouponError(data.coupon_valid === false ? data.coupon_message : "");
         setCouponValid(data.coupon_valid);
       })
       .catch(() => setPrice(null));
-  }, [pkg, travelers.length, couponCode]);
+  }, [pkg, travelers.length, couponCode, selectedMap]);
 
   // check availability when date changes
   useEffect(() => {
@@ -116,6 +125,14 @@ export default function CreateIndependentBooking() {
       setError("Selected date is not available. Please choose another date.");
       return;
     }
+    // validate selectable groups have selection
+    const groups = pkg.price_breakdown?.option_groups || {};
+    for (const grp of Object.keys(groups)) {
+      if (!selectedMap[grp]) {
+        setError(`Please select a ${grp.replace('_',' ')} option.`);
+        return;
+      }
+    }
     setSubmitting(true);
     try {
       const payload = {
@@ -124,6 +141,7 @@ export default function CreateIndependentBooking() {
         number_of_travelers: travelers.length,
         special_requests: specialRequests,
         coupon_code: couponCode || undefined,
+        selected_services: Object.values(selectedMap),
         travelers: travelers.map((t) => ({ ...t, age: Number(t.age) })),
       };
       const booking = await bookingApi.create(payload);
@@ -241,20 +259,108 @@ export default function CreateIndependentBooking() {
             </div>
           ))}
 
-          {/* Review Services */}
+          {/* Choose Travel / Van */}
+          {pkg.price_breakdown?.option_groups && (
+            <>
+              {pkg.price_breakdown.option_groups.transport && (
+                <div className="card create-booking__section">
+                  <h3>3. Choose Travel — How You’ll Reach Destination</h3>
+                  <p style={{ fontSize: "0.85rem", color: "#64748b", marginBottom: 12 }}>Select one intercity option: Flight, Train or Bus.</p>
+                  <div style={{ display: "grid", gap: 10 }}>
+                    {pkg.price_breakdown.option_groups.transport.map((opt) => (
+                      <label key={opt.id} style={{ display: "flex", alignItems: "center", gap: 12, border: selectedMap.transport === opt.id ? "2px solid #0f7a6c" : "1px solid #e2e8f0", borderRadius: 12, padding: 12, background: selectedMap.transport === opt.id ? "#e6f5f2" : "#fff", cursor: "pointer" }}>
+                        <input type="radio" name="transport" checked={selectedMap.transport === opt.id} onChange={() => setSelectedMap({ ...selectedMap, transport: opt.id })} />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 700 }}>{opt.service_name} <small style={{ color: "#0f7a6c", textTransform: "capitalize" }}>· {opt.service_category}</small></div>
+                          <div style={{ fontSize: "0.84rem", color: "#475569" }}>{opt.description}</div>
+                          {opt.extra_data?.vehicle && <div style={{ fontSize: "0.78rem", color: "#64748b" }}>Vehicle: {opt.extra_data.vehicle} {opt.extra_data.capacity ? `· ${opt.extra_data.capacity} seats` : ""}</div>}
+                        </div>
+                        <div style={{ fontWeight: 800, textAlign: "right" }}>{formatCurrency(opt.total_price)}<br /><small style={{ color: "#64748b", fontWeight: 400 }}>{formatCurrency(opt.price)} / person</small></div>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {pkg.price_breakdown.option_groups.local_vehicle && (
+                <div className="card create-booking__section">
+                  <h3>4. Choose Local Vehicle — Van for Sightseeing</h3>
+                  <p style={{ fontSize: "0.85rem", color: "#64748b", marginBottom: 12 }}>Private vehicle for daily transfers.</p>
+                  <div style={{ display: "grid", gap: 10 }}>
+                    {pkg.price_breakdown.option_groups.local_vehicle.map((opt) => (
+                      <label key={opt.id} style={{ display: "flex", alignItems: "center", gap: 12, border: selectedMap.local_vehicle === opt.id ? "2px solid #0f7a6c" : "1px solid #e2e8f0", borderRadius: 12, padding: 12, background: selectedMap.local_vehicle === opt.id ? "#e6f5f2" : "#fff", cursor: "pointer" }}>
+                        <input type="radio" name="local_vehicle" checked={selectedMap.local_vehicle === opt.id} onChange={() => setSelectedMap({ ...selectedMap, local_vehicle: opt.id })} />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 700 }}>{opt.service_name}</div>
+                          <div style={{ fontSize: "0.84rem", color: "#475569" }}>{opt.description}</div>
+                          {opt.extra_data?.vehicle && <div style={{ fontSize: "0.78rem", color: "#64748b" }}>{opt.extra_data.vehicle} · {opt.extra_data.ac || ""} · {opt.extra_data.capacity} seats</div>}
+                        </div>
+                        <div style={{ fontWeight: 800 }}>{formatCurrency(opt.total_price)}</div>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {pkg.price_breakdown.option_groups.hotel && (
+                <div className="card create-booking__section">
+                  <h3>5. Choose Hotel — By Budget</h3>
+                  <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+                    {["all","budget","standard","luxury"].map((tier) => (
+                      <button key={tier} type="button" onClick={() => setHotelBudget(tier)} style={{ padding: "6px 12px", borderRadius: 999, border: hotelBudget===tier ? "2px solid #0f7a6c" : "1px solid #e2e8f0", background: hotelBudget===tier ? "#0f7a6c" : "#fff", color: hotelBudget===tier ? "#fff" : "#334155", fontSize: "0.82rem", fontWeight: 600, textTransform: "capitalize" }}>{tier === "budget" ? "Budget (<₹9k)" : tier === "standard" ? "Standard (₹9k-15k)" : tier==="luxury" ? "Luxury (>₹15k)" : "All"}</button>
+                    ))}
+                  </div>
+                  <div style={{ display: "grid", gap: 10 }}>
+                    {pkg.price_breakdown.option_groups.hotel
+                      .filter((opt) => {
+                        const p = Number(opt.total_price);
+                        if (hotelBudget==="budget") return p < 9000;
+                        if (hotelBudget==="standard") return p >= 9000 && p <= 15000;
+                        if (hotelBudget==="luxury") return p > 15000;
+                        return true;
+                      })
+                      .map((opt) => (
+                      <label key={opt.id} style={{ display: "flex", alignItems: "center", gap: 12, border: selectedMap.hotel === opt.id ? "2px solid #0f7a6c" : "1px solid #e2e8f0", borderRadius: 12, padding: 12, background: selectedMap.hotel === opt.id ? "#e6f5f2" : "#fff", cursor: "pointer" }}>
+                        <input type="radio" name="hotel" checked={selectedMap.hotel === opt.id} onChange={() => setSelectedMap({ ...selectedMap, hotel: opt.id })} />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 700, display: "flex", alignItems: "center", gap: 6 }}>{opt.service_name} <span style={{ fontSize: "0.7rem", padding: "2px 6px", borderRadius: 999, background: Number(opt.total_price) > 15000 ? "#fee2e2" : Number(opt.total_price) > 9000 ? "#fef3c7" : "#dcfce7", color: Number(opt.total_price) > 15000 ? "#991b1b" : Number(opt.total_price) > 9000 ? "#92400e" : "#166534" }}>{Number(opt.total_price) > 15000 ? "Luxury" : Number(opt.total_price) > 9000 ? "Standard" : "Budget"}</span></div>
+                          <div style={{ fontSize: "0.78rem", color: "#64748b" }}>{opt.extra_data?.stars ? `${opt.extra_data.stars}★ · ${opt.extra_data.room} · ${opt.location}` : opt.location} {opt.extra_data?.per_night ? `· ${formatCurrency(opt.extra_data.per_night)}/night` : ""}</div>
+                          <div style={{ fontSize: "0.84rem", color: "#475569" }}>{opt.description}</div>
+                        </div>
+                        <div style={{ fontWeight: 800, textAlign: "right" }}>{formatCurrency(opt.total_price)}<br /><small style={{ color: "#64748b", fontWeight: 400 }}>for 4N</small></div>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Review Services (fixed) */}
           <div className="card create-booking__section">
-            <h3>3. Review Included Services</h3>
+            <h3>6. Review Included Services (Fixed)</h3>
             {pkg.price_breakdown ? (
               <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, overflow: "hidden" }}>
-                {pkg.price_breakdown.services.map((s) => (
+                {/* Fixed services = those not in selectable groups - show breakdown from price */}
+                {price ? price.services?.filter((s)=>!s.is_user_selectable).map((s) => (
+                  <div key={s.service_name} style={{ display: "flex", justifyContent: "space-between", padding: "10px 14px", borderBottom: "1px solid #f1f5f9", fontSize: "0.92rem" }}>
+                    <span>✅ {s.service_name} <small style={{ color: "#64748b" }}>×{s.quantity} · {s.service_type}</small></span>
+                    <strong>{formatCurrency(s.total_price)}</strong>
+                  </div>
+                )) : pkg.price_breakdown.services.filter((s)=>!s.is_user_selectable).map((s) => (
                   <div key={s.service_name} style={{ display: "flex", justifyContent: "space-between", padding: "10px 14px", borderBottom: "1px solid #f1f5f9", fontSize: "0.92rem" }}>
                     <span>✅ {s.service_name} <small style={{ color: "#64748b" }}>×{s.quantity} · {s.service_type}</small></span>
                     <strong>{formatCurrency(s.total_price)}</strong>
                   </div>
                 ))}
-                <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 14px", background: "#f8fafc" }}><span>Service Cost</span><span>{formatCurrency(pkg.price_breakdown.service_cost)}</span></div>
-                <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 14px", background: "#f8fafc" }}><span>Service Fee</span><span>{formatCurrency(pkg.price_breakdown.service_fee)}</span></div>
-                <div style={{ display: "flex", justifyContent: "space-between", padding: "12px 14px", background: "#0f172a", color: "#fff", fontWeight: 800 }}><span>Package Total (per group)</span><span>{formatCurrency(pkg.price_breakdown.final_price)}</span></div>
+                {/* Selected options summary */}
+                {price && price.services?.filter((s)=>s.is_user_selectable).map((s) => (
+                  <div key={"sel-"+s.service_name} style={{ display: "flex", justifyContent: "space-between", padding: "10px 14px", borderBottom: "1px solid #f1f5f9", fontSize: "0.92rem", background: "#fefce8" }}>
+                    <span>⭐ {s.service_name} <small style={{ color: "#92400e" }}>selected · {s.option_group}</small></span>
+                    <strong>{formatCurrency(s.total_price)}</strong>
+                  </div>
+                ))}
+                <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 14px", background: "#f8fafc" }}><span>Service Cost</span><span>{formatCurrency(price ? price.service_cost : pkg.price_breakdown.service_cost)}</span></div>
+                <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 14px", background: "#f8fafc" }}><span>Service Fee</span><span>{formatCurrency(price ? price.service_fee : pkg.price_breakdown.service_fee)}</span></div>
+                <div style={{ display: "flex", justifyContent: "space-between", padding: "12px 14px", background: "#0f172a", color: "#fff", fontWeight: 800 }}><span>Package Total (per group)</span><span>{formatCurrency(price ? price.subtotal : pkg.price_breakdown.final_price)}</span></div>
               </div>
             ) : <p style={{ color: "#64748b" }}>No service breakdown available.</p>}
           </div>

@@ -105,6 +105,12 @@ def booking_list_create(request):
     number_of_travelers = data["number_of_travelers"]
     travelers_data = data["travelers"]
     coupon_code = data.get("coupon_code", "").strip()
+    selected_services = data.get("selected_services", []) or []
+    # normalize to ints
+    try:
+        selected_services = [int(x) for x in selected_services if str(x).strip()]
+    except Exception:
+        selected_services = []
 
     # The whole read-check-decrement-create sequence must be atomic and
     # the package row must be locked for the duration, otherwise two
@@ -146,6 +152,20 @@ def booking_list_create(request):
 
             # Independent package specific checks
             is_independent = package.trip_type == TourPackage.TripType.INDEPENDENT_PACKAGE
+            # Validate selected_services belong to this package
+            if is_independent and selected_services:
+                valid_ids = set(package.package_services.filter(is_included=True, is_user_selectable=True).values_list("id", flat=True))
+                for sid in selected_services:
+                    if sid not in valid_ids:
+                        return Response({"detail": f"Selected service {sid} does not belong to this package or is not selectable."}, status=status.HTTP_400_BAD_REQUEST)
+                # Ensure one per group: detect duplicates groups
+                groups = {}
+                for ps in package.package_services.filter(id__in=selected_services):
+                    grp = ps.option_group or f"__single_{ps.id}"
+                    if grp in groups:
+                        return Response({"detail": f"Only one option allowed per group '{grp}'."}, status=status.HTTP_400_BAD_REQUEST)
+                    groups[grp] = ps.id
+
             if is_independent:
                 travel_date = data["travel_date"]
                 # Check date availability if travel_dates are configured
@@ -158,10 +178,27 @@ def booking_list_create(request):
                     # Limited still allows booking but warn? we allow
                     if td.available_slots is not None and td.available_slots < number_of_travelers:
                         return Response({"detail": f"Only {td.available_slots} slot(s) left for {travel_date}."}, status=status.HTTP_409_CONFLICT)
-                # Check required services available
+                # Check required services available (only for non-selectable or selected)
                 unavailable_services = []
-                for ps in package.package_services.filter(is_required=True):
-                    if not ps.service.is_active:
+                # Determine which services will be used for booking
+                if selected_services:
+                    check_ps = package.package_services.filter(id__in=selected_services)
+                    # also add non-selectable required
+                    check_ps = list(check_ps) + list(package.package_services.filter(is_included=True, is_user_selectable=False, is_required=True))
+                else:
+                    # check default selection: use computed defaults
+                    # Build default selected per group
+                    default_ids = []
+                    groups_seen = set()
+                    for ps in package.package_services.filter(is_included=True, is_user_selectable=True):
+                        if ps.option_group not in groups_seen:
+                            grp_ps = package.package_services.filter(is_included=True, is_user_selectable=True, option_group=ps.option_group).order_by('-is_default_selected', 'display_order').first()
+                            if grp_ps:
+                                default_ids.append(grp_ps.id)
+                                groups_seen.add(ps.option_group)
+                    check_ps = list(package.package_services.filter(is_included=True, is_user_selectable=False, is_required=True)) + list(package.package_services.filter(id__in=default_ids))
+                for ps in check_ps:
+                    if ps.is_required and not ps.service.is_active:
                         unavailable_services.append(ps.service.name)
                 if unavailable_services:
                     return Response({"detail": f"Cannot book — required services unavailable: {', '.join(unavailable_services)}"}, status=status.HTTP_400_BAD_REQUEST)
@@ -170,7 +207,15 @@ def booking_list_create(request):
             # Calculate pricing server-side — never trust client
             from decimal import Decimal
             if is_independent:
-                service_cost_per_person = sum((ps.total_price for ps in package.package_services.filter(is_included=True)), Decimal('0'))
+                if selected_services:
+                    per_person = package.compute_price_for_selection(selected_services) - (package.service_fee or Decimal('0'))
+                else:
+                    # use default selection price
+                    per_person = package.compute_price_for_selection(None) - (package.service_fee or Decimal('0'))
+                    # fallback if compute returns total with fee
+                    if per_person is None:
+                        per_person = sum((ps.total_price for ps in package.package_services.filter(is_included=True) if not (ps.is_user_selectable and ps.option_group)), Decimal('0'))
+                service_cost_per_person = per_person
                 service_fee = package.service_fee or Decimal('0')
                 subtotal = service_cost_per_person * number_of_travelers + service_fee
             else:
@@ -235,10 +280,29 @@ def booking_list_create(request):
                 [Traveler(booking=booking, **traveler) for traveler in travelers_data]
             )
 
-            # For independent, create BookingService snapshots
+            # For independent, create BookingService snapshots (only for selected/default)
             if is_independent:
                 bs_list = []
-                for ps in package.package_services.all():
+                # Determine which package_services to snapshot
+                if selected_services:
+                    # selected + non-selectable included
+                    ps_to_snapshot = list(package.package_services.filter(is_included=True, is_user_selectable=False)) + list(package.package_services.filter(id__in=selected_services))
+                else:
+                    # default selection
+                    ps_to_snapshot = list(package.package_services.filter(is_included=True, is_user_selectable=False))
+                    groups_seen = set()
+                    for ps in package.package_services.filter(is_included=True, is_user_selectable=True).order_by('-is_default_selected', 'display_order'):
+                        if ps.option_group not in groups_seen:
+                            ps_to_snapshot.append(ps)
+                            groups_seen.add(ps.option_group)
+                # Deduplicate
+                seen = set()
+                deduped = []
+                for ps in ps_to_snapshot:
+                    if ps.id not in seen:
+                        deduped.append(ps)
+                        seen.add(ps.id)
+                for ps in deduped:
                     bs_list.append(BookingService(
                         booking=booking,
                         package_service=ps,

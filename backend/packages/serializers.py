@@ -82,14 +82,14 @@ class PackageServiceSerializer(serializers.ModelSerializer):
         model = PackageService
         fields = [
             "id", "service", "service_id", "quantity", "unit_price",
-            "total_price", "is_included", "is_required", "display_order", "notes",
+            "total_price", "is_included", "is_required", "is_user_selectable", "option_group", "is_default_selected", "display_order", "notes",
         ]
 
 
 class PackageServiceWriteSerializer(serializers.ModelSerializer):
     class Meta:
         model = PackageService
-        fields = ["service", "quantity", "unit_price", "is_included", "is_required", "display_order", "notes"]
+        fields = ["service", "quantity", "unit_price", "is_included", "is_required", "is_user_selectable", "option_group", "is_default_selected", "display_order", "notes"]
 
 
 class PackageTravelDateSerializer(serializers.ModelSerializer):
@@ -180,8 +180,13 @@ class TourPackageListSerializer(serializers.ModelSerializer):
 
     def get_computed_price(self, obj):
         try:
+            if obj.trip_type == obj.TripType.INDEPENDENT_PACKAGE:
+                return obj.computed_independent_price
+        except Exception:
+            pass
+        # fallback to effective_price
+        try:
             if obj.trip_type == obj.TripType.INDEPENDENT_PACKAGE and hasattr(obj, 'package_services'):
-                # sum included services + fee
                 from decimal import Decimal
                 total = Decimal('0')
                 for ps in obj.package_services.all() if hasattr(obj, '_prefetched_objects_cache') else obj.package_services.filter(is_included=True):
@@ -193,6 +198,8 @@ class TourPackageListSerializer(serializers.ModelSerializer):
 
     def get_service_cost_total(self, obj):
         try:
+            if obj.trip_type == obj.TripType.INDEPENDENT_PACKAGE:
+                return obj.service_cost_total
             from decimal import Decimal
             total = Decimal('0')
             for ps in obj.package_services.all() if hasattr(obj, '_prefetched_objects_cache') else obj.package_services.filter(is_included=True):
@@ -264,8 +271,16 @@ class TourPackageDetailSerializer(TourPackageListSerializer):
             return None
         from decimal import Decimal
         services = []
+        # Use default selection logic
+        selectable_groups = {}
         total = Decimal('0')
-        for ps in obj.package_services.filter(is_included=True):
+        for ps in obj.package_services.filter(is_included=True).select_related("service"):
+            if ps.is_user_selectable and ps.option_group:
+                if ps.option_group not in selectable_groups:
+                    group_qs = obj.package_services.filter(is_included=True, is_user_selectable=True, option_group=ps.option_group).order_by('-is_default_selected', 'display_order')
+                    chosen = group_qs.first()
+                    selectable_groups[ps.option_group] = chosen
+                continue
             services.append({
                 "id": ps.id,
                 "service_name": ps.service.name,
@@ -274,12 +289,47 @@ class TourPackageDetailSerializer(TourPackageListSerializer):
                 "quantity": ps.quantity,
                 "unit_price": str(ps.unit_price),
                 "total_price": str(ps.total_price),
+                "is_user_selectable": ps.is_user_selectable,
+                "option_group": ps.option_group,
+                "is_default_selected": ps.is_default_selected,
             })
             total += ps.total_price
+        for chosen in selectable_groups.values():
+            if chosen:
+                services.append({
+                    "id": chosen.id,
+                    "service_name": chosen.service.name,
+                    "service_type": chosen.service.service_type,
+                    "service_category": chosen.service.service_category,
+                    "quantity": chosen.quantity,
+                    "unit_price": str(chosen.unit_price),
+                    "total_price": str(chosen.total_price),
+                    "is_user_selectable": chosen.is_user_selectable,
+                    "option_group": chosen.option_group,
+                    "is_default_selected": chosen.is_default_selected,
+                })
+                total += chosen.total_price
         service_fee = obj.service_fee or Decimal('0')
         final = total + service_fee
+        # Also build grouped options for frontend choice UI
+        option_groups = {}
+        for ps in obj.package_services.filter(is_included=True, is_user_selectable=True).select_related("service"):
+            option_groups.setdefault(ps.option_group or "other", []).append({
+                "id": ps.id,
+                "service_name": ps.service.name,
+                "service_type": ps.service.service_type,
+                "service_category": ps.service.service_category,
+                "description": ps.service.description,
+                "location": ps.service.location,
+                "price": str(ps.unit_price),
+                "total_price": str(ps.total_price),
+                "quantity": ps.quantity,
+                "is_default_selected": ps.is_default_selected,
+                "extra_data": ps.service.extra_data,
+            })
         return {
             "services": services,
+            "option_groups": option_groups,
             "service_cost": str(total),
             "service_fee": str(service_fee),
             "final_price": str(final),

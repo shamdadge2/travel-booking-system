@@ -151,6 +151,7 @@ class BookingCreateSerializer(serializers.Serializer):
     special_requests = serializers.CharField(required=False, allow_blank=True, default="")
     travelers = TravelerInputSerializer(many=True)
     coupon_code = serializers.CharField(required=False, allow_blank=True, default="")
+    selected_services = serializers.ListField(child=serializers.IntegerField(), required=False, default=list, help_text="List of PackageService ids chosen for selectable groups")
 
     def validate_travel_date(self, value):
         if value is None:

@@ -140,6 +140,67 @@ export default function PackageDetails() {
               </section>
             )}
 
+            {isIndependent && pkg.price_breakdown?.option_groups && Object.keys(pkg.price_breakdown.option_groups).length > 0 && (
+              <>
+                {pkg.price_breakdown.option_groups.transport && (
+                  <section className="pkg-details__section">
+                    <h2>🚐 Travel Options — How You’ll Go</h2>
+                    <p style={{ color: "#64748b", fontSize: "0.88rem", marginBottom: 12 }}>Choose how you travel to the destination. All options include airport assistance; pick at booking.</p>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(180px,1fr))", gap: 12 }}>
+                      {pkg.price_breakdown.option_groups.transport.map((opt) => (
+                        <div key={opt.id} style={{ border: opt.is_default_selected ? "2px solid #0f7a6c" : "1px solid #e2e8f0", borderRadius: 12, padding: 12, background: opt.is_default_selected ? "#e6f5f2" : "#fff" }}>
+                          <div style={{ fontWeight: 800, fontSize: "0.95rem", color: "#0f172a" }}>{opt.service_name}</div>
+                          <div style={{ fontSize: "0.78rem", color: "#0f7a6c", textTransform: "capitalize", marginBottom: 4 }}>{opt.service_category} · {opt.service_type}</div>
+                          <p style={{ fontSize: "0.84rem", color: "#475569", margin: "6px 0" }}>{opt.description || "Comfortable travel"}</p>
+                          {opt.extra_data?.vehicle && <div style={{ fontSize: "0.78rem", color: "#64748b" }}>Vehicle: {opt.extra_data.vehicle} {opt.extra_data.capacity ? `· ${opt.extra_data.capacity} seats` : ""}</div>}
+                          <div style={{ fontWeight: 700, marginTop: 6 }}>{formatCurrency(opt.total_price)}</div>
+                          {opt.is_default_selected && <span style={{ fontSize: "0.7rem", background: "#0f7a6c", color: "#fff", padding: "2px 6px", borderRadius: 999 }}>Default</span>}
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                )}
+                {pkg.price_breakdown.option_groups.local_vehicle && (
+                  <section className="pkg-details__section">
+                    <h2>🚗 Local Vehicle — Sightseeing Transfers</h2>
+                    <p style={{ color: "#64748b", fontSize: "0.88rem", marginBottom: 12 }}>Private vehicle for daily sightseeing and hotel transfers.</p>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(180px,1fr))", gap: 12 }}>
+                      {pkg.price_breakdown.option_groups.local_vehicle.map((opt) => (
+                        <div key={opt.id} style={{ border: opt.is_default_selected ? "2px solid #0f7a6c" : "1px solid #e2e8f0", borderRadius: 12, padding: 12, background: opt.is_default_selected ? "#e6f5f2" : "#fff" }}>
+                          <div style={{ fontWeight: 800 }}>{opt.service_name}</div>
+                          <div style={{ fontSize: "0.78rem", color: "#64748b" }}>{opt.service_category}</div>
+                          <p style={{ fontSize: "0.84rem", color: "#475569" }}>{opt.description}</p>
+                          {opt.extra_data?.vehicle && <div style={{ fontSize: "0.78rem", color: "#64748b" }}>{opt.extra_data.vehicle} · {opt.extra_data.ac || ""} · {opt.extra_data.capacity} seats</div>}
+                          <div style={{ fontWeight: 700, marginTop: 6 }}>{formatCurrency(opt.total_price)}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                )}
+                {pkg.price_breakdown.option_groups.hotel && (
+                  <section className="pkg-details__section">
+                    <h2>🏨 Hotel Options — Choose by Budget</h2>
+                    <p style={{ color: "#64748b", fontSize: "0.88rem", marginBottom: 12 }}>Pick hotel tier that fits your budget. All include 4 nights with breakfast.</p>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(200px,1fr))", gap: 12 }}>
+                      {pkg.price_breakdown.option_groups.hotel.map((opt) => (
+                        <div key={opt.id} style={{ border: opt.is_default_selected ? "2px solid #0f7a6c" : "1px solid #e2e8f0", borderRadius: 12, padding: 14, background: opt.is_default_selected ? "#e6f5f2" : "#fff" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                            <strong style={{ fontSize: "0.95rem" }}>{opt.service_name}</strong>
+                            <span style={{ fontSize: "0.7rem", padding: "2px 8px", borderRadius: 999, background: Number(opt.total_price) > 15000 ? "#fee2e2" : Number(opt.total_price) > 9000 ? "#fef3c7" : "#dcfce7", color: Number(opt.total_price) > 15000 ? "#991b1b" : Number(opt.total_price) > 9000 ? "#92400e" : "#166534" }}>{Number(opt.total_price) > 15000 ? "Luxury" : Number(opt.total_price) > 9000 ? "Standard" : "Budget"}</span>
+                          </div>
+                          <div style={{ fontSize: "0.78rem", color: "#64748b" }}>{opt.extra_data?.stars ? `${opt.extra_data.stars}★ · ${opt.extra_data.room}` : opt.location}</div>
+                          <p style={{ fontSize: "0.84rem", color: "#475569", margin: "6px 0" }}>{opt.description}</p>
+                          {opt.extra_data?.per_night && <div style={{ fontSize: "0.78rem", color: "#64748b" }}>{formatCurrency(opt.extra_data.per_night)} / night</div>}
+                          <div style={{ fontWeight: 800, fontSize: "1.05rem", marginTop: 6 }}>{formatCurrency(opt.total_price)} <small style={{ fontWeight: 400, color: "#64748b", fontSize: "0.78rem" }}>for 4N</small></div>
+                          {opt.is_default_selected && <span style={{ fontSize: "0.7rem", background: "#0f7a6c", color: "#fff", padding: "2px 6px", borderRadius: 999 }}>Default</span>}
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                )}
+              </>
+            )}
+
             {isIndependent && pkg.package_services && pkg.package_services.length > 0 && (
               <section className="pkg-details__section">
                 <h2>Accommodation & Services</h2>
@@ -148,7 +209,7 @@ export default function PackageDetails() {
                     <div key={ps.id} style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <div>
                         <strong style={{ fontSize: "0.95rem" }}>{ps.service?.name || "Service"} </strong>
-                        <span style={{ background: ps.is_included ? "#e6f5f2" : "#fef2f2", color: ps.is_included ? "#0f7a6c" : "#dc2626", fontSize: "0.72rem", padding: "2px 8px", borderRadius: 999, marginLeft: 6 }}>{ps.is_included ? "Included" : "Excluded"}</span>
+                        {ps.is_user_selectable ? <span style={{ background: "#fef3c7", color: "#92400e", fontSize: "0.72rem", padding: "2px 8px", borderRadius: 999, marginLeft: 6 }}>Choose: {ps.option_group}</span> : <span style={{ background: ps.is_included ? "#e6f5f2" : "#fef2f2", color: ps.is_included ? "#0f7a6c" : "#dc2626", fontSize: "0.72rem", padding: "2px 8px", borderRadius: 999, marginLeft: 6 }}>{ps.is_included ? "Included" : "Excluded"}</span>}
                         <p style={{ margin: "4px 0 0", color: "#64748b", fontSize: "0.84rem" }}>{ps.service?.description || ps.notes || ""} · {ps.service?.service_type} · Qty {ps.quantity}</p>
                       </div>
                       <div style={{ textAlign: "right" }}>

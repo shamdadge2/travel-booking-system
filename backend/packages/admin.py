@@ -58,7 +58,7 @@ class ItineraryInline(admin.TabularInline):
 class PackageServiceInline(admin.TabularInline):
     model = PackageService
     extra = 1
-    fields = ("service", "quantity", "unit_price", "is_included", "is_required", "display_order")
+    fields = ("service", "quantity", "unit_price", "is_included", "is_required", "is_user_selectable", "option_group", "is_default_selected", "display_order")
     autocomplete_fields = ("service",)
 
 

@@ -340,7 +340,7 @@ export default function AdminPackages() {
   const [pkgServices, setPkgServices] = useState([]);
   const [travelDates, setTravelDates] = useState([]);
   const [newTravelDate, setNewTravelDate] = useState({ travel_date: "", status: "available", available_slots: "" });
-  const [newService, setNewService] = useState({ service: "", quantity: 1, unit_price: "", is_included: true });
+  const [newService, setNewService] = useState({ service: "", quantity: 1, unit_price: "", is_included: true, is_user_selectable: false, option_group: "", is_default_selected: false });
 
   const load = () => {
     setIsLoading(true);
@@ -708,27 +708,31 @@ export default function AdminPackages() {
                 <p className="admin-form__note">Save the package first, then reopen to add services (Flight, Hotel, Transport etc) and travel dates. Services define the price breakdown.</p>
               ) : (
                 <>
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
-                    <select className="form-select" style={{ flex: 1, minWidth: 180 }} value={newService.service} onChange={(e) => {
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12, alignItems: "end" }}>
+                    <select className="form-select" style={{ flex: 1, minWidth: 160 }} value={newService.service} onChange={(e) => {
                       const sid = e.target.value;
-                      setNewService({ ...newService, service: sid });
                       const svc = allServices.find((s) => String(s.id) === sid);
-                      if (svc) setNewService((prev) => ({ ...prev, service: sid, unit_price: svc.price }));
+                      if (svc) setNewService({ ...newService, service: sid, unit_price: svc.price });
+                      else setNewService({ ...newService, service: sid });
                     }}>
                       <option value="">Select service</option>
                       {allServices.map((s) => (
                         <option key={s.id} value={s.id}>{s.name} — {s.service_type} — {formatCurrency(s.price)}</option>
                       ))}
                     </select>
-                    <input type="number" min="1" placeholder="Qty" className="form-input" style={{ width: 80 }} value={newService.quantity} onChange={(e) => setNewService({ ...newService, quantity: e.target.value })} />
-                    <input type="number" step="0.01" placeholder="Unit price" className="form-input" style={{ width: 130 }} value={newService.unit_price} onChange={(e) => setNewService({ ...newService, unit_price: e.target.value })} />
-                    <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: "0.85rem" }}><input type="checkbox" checked={newService.is_included} onChange={(e) => setNewService({ ...newService, is_included: e.target.checked })} /> Included</label>
+                    <input type="number" min="1" placeholder="Qty" className="form-input" style={{ width: 70 }} value={newService.quantity} onChange={(e) => setNewService({ ...newService, quantity: e.target.value })} />
+                    <input type="number" step="0.01" placeholder="Unit price" className="form-input" style={{ width: 120 }} value={newService.unit_price} onChange={(e) => setNewService({ ...newService, unit_price: e.target.value })} />
+                    <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: "0.8rem" }}><input type="checkbox" checked={newService.is_included} onChange={(e) => setNewService({ ...newService, is_included: e.target.checked })} /> Incl.</label>
+                    <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: "0.8rem" }}><input type="checkbox" checked={newService.is_user_selectable} onChange={(e) => setNewService({ ...newService, is_user_selectable: e.target.checked })} /> User Choice</label>
+                    <input placeholder="Group e.g. transport/hotel" className="form-input" style={{ width: 120 }} value={newService.option_group} onChange={(e) => setNewService({ ...newService, option_group: e.target.value })} disabled={!newService.is_user_selectable} />
+                    <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: "0.8rem" }}><input type="checkbox" checked={newService.is_default_selected} onChange={(e) => setNewService({ ...newService, is_default_selected: e.target.checked })} disabled={!newService.is_user_selectable} /> Default</label>
                     <button type="button" className="btn btn-primary" onClick={async () => {
                       if (!newService.service) return;
                       try {
-                        const created = await packageApi.packageServices(editingId, { service: Number(newService.service), quantity: Number(newService.quantity) || 1, unit_price: newService.unit_price || undefined, is_included: newService.is_included });
+                        const payload = { service: Number(newService.service), quantity: Number(newService.quantity) || 1, unit_price: newService.unit_price || undefined, is_included: newService.is_included, is_user_selectable: newService.is_user_selectable, option_group: newService.option_group || "", is_default_selected: newService.is_default_selected };
+                        const created = await packageApi.packageServices(editingId, payload);
                         setPkgServices([...pkgServices, created]);
-                        setNewService({ service: "", quantity: 1, unit_price: "", is_included: true });
+                        setNewService({ service: "", quantity: 1, unit_price: "", is_included: true, is_user_selectable: false, option_group: "", is_default_selected: false });
                       } catch (err) {
                         setFormError(err.response?.data?.detail || JSON.stringify(err.response?.data) || "Couldn't add service");
                       }
@@ -737,10 +741,11 @@ export default function AdminPackages() {
                   {pkgServices.length > 0 ? (
                     <div style={{ border: "1px solid #e2e8f0", borderRadius: 8, overflow: "hidden", marginBottom: 12 }}>
                       {pkgServices.map((ps) => (
-                        <div key={ps.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", borderBottom: "1px solid #f1f5f9", background: "#fff" }}>
+                        <div key={ps.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", borderBottom: "1px solid #f1f5f9", background: "#fff", fontSize: "0.88rem" }}>
                           <div>
                             <strong>{ps.service?.name}</strong> <small style={{ color: "#64748b" }}>×{ps.quantity} · {formatCurrency(ps.unit_price)} = {formatCurrency(ps.total_price)}</small>
-                            <span style={{ marginLeft: 8, fontSize: "0.72rem", padding: "2px 6px", borderRadius: 999, background: ps.is_included ? "#e6f5f2" : "#fef2f2", color: ps.is_included ? "#0f7a6c" : "#dc2626" }}>{ps.is_included ? "Included" : "Excluded"}</span>
+                            <span style={{ marginLeft: 8, fontSize: "0.7rem", padding: "2px 6px", borderRadius: 999, background: ps.is_included ? "#e6f5f2" : "#fef2f2", color: ps.is_included ? "#0f7a6c" : "#dc2626" }}>{ps.is_included ? "Included" : "Excluded"}</span>
+                            {ps.is_user_selectable && <span style={{ marginLeft: 6, fontSize: "0.7rem", padding: "2px 6px", borderRadius: 999, background: "#fef3c7", color: "#92400e" }}>Choice: {ps.option_group || "group"} {ps.is_default_selected ? "★" : ""}</span>}
                           </div>
                           <button type="button" className="admin-list-row__remove" onClick={async () => {
                             try { await packageApi.removePackageService(ps.id); setPkgServices(pkgServices.filter((x) => x.id !== ps.id)); } catch {}
@@ -749,10 +754,10 @@ export default function AdminPackages() {
                       ))}
                       <div style={{ padding: "8px 12px", background: "#0f172a", color: "#fff", display: "flex", justifyContent: "space-between", fontWeight: 700 }}>
                         <span>Service Cost + Fee ({formatCurrency(formData.service_fee)})</span>
-                        <span>{formatCurrency(pkgServices.filter((p) => p.is_included).reduce((a, b) => a + Number(b.total_price), 0) + Number(formData.service_fee || 0))}</span>
+                        <span>{formatCurrency(pkgServices.filter((p) => p.is_included).reduce((a, b) => a + Number(b.total_price), 0) + Number(formData.service_fee || 0))} (default selection for choice groups)</span>
                       </div>
                     </div>
-                  ) : <p className="admin-form__note">No services yet. Add Flight, Hotel, Transport, Guide, Activities etc.</p>}
+                  ) : <p className="admin-form__note">No services yet. Add Flight, Hotel, Transport, Guide, Activities etc. Mark as “User Choice” to let traveler pick (e.g., group transport = Flight vs Train vs Van; group hotel = Budget vs Luxury). Set one as Default.</p>}
 
                   <h5 style={{ margin: "12px 0 8px", color: "#0f172a" }}>Travel Dates</h5>
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>

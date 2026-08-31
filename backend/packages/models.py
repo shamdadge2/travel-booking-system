@@ -147,14 +147,63 @@ class TourPackage(models.Model):
 
     @property
     def computed_independent_price(self):
-        """Sum of included services + service_fee for independent packages."""
+        """Sum of included services + service_fee for independent packages.
+        For selectable groups, only the default-selected per group is counted for list price."""
         from decimal import Decimal
         total = Decimal('0')
+        # group handling: for selectable groups, only default counts
+        selectable_groups = {}
         for ps in self.package_services.filter(is_included=True):
+            if ps.is_user_selectable and ps.option_group:
+                if ps.option_group not in selectable_groups:
+                    # pick default else first
+                    group_qs = self.package_services.filter(is_included=True, is_user_selectable=True, option_group=ps.option_group).order_by('-is_default_selected', 'display_order')
+                    chosen = group_qs.first()
+                    selectable_groups[ps.option_group] = chosen
+                continue
             try:
                 total += ps.total_price
             except Exception:
                 total += (ps.unit_price or Decimal('0')) * (ps.quantity or 1)
+        for chosen in selectable_groups.values():
+            if chosen:
+                try:
+                    total += chosen.total_price
+                except Exception:
+                    total += (chosen.unit_price or Decimal('0')) * (chosen.quantity or 1)
+        return total + (self.service_fee or Decimal('0'))
+
+    def compute_price_for_selection(self, selected_ids=None):
+        """Compute price for a specific user selection (list of PackageService ids)."""
+        from decimal import Decimal
+        total = Decimal('0')
+        if selected_ids is None:
+            return self.computed_independent_price
+        selected_set = set(int(x) for x in selected_ids)
+        # Determine groups
+        groups = {}
+        for ps in self.package_services.filter(is_included=True, is_user_selectable=True):
+            groups.setdefault(ps.option_group or f"__single_{ps.id}", []).append(ps)
+        # Add non-selectable always
+        for ps in self.package_services.filter(is_included=True, is_user_selectable=False):
+            total += ps.total_price
+        # Add selected per group
+        for grp, opts in groups.items():
+            chosen = None
+            for ps in opts:
+                if ps.id in selected_set:
+                    chosen = ps
+                    break
+            if not chosen:
+                # fallback to default
+                for ps in opts:
+                    if ps.is_default_selected:
+                        chosen = ps
+                        break
+                if not chosen and opts:
+                    chosen = opts[0]
+            if chosen:
+                total += chosen.total_price
         return total + (self.service_fee or Decimal('0'))
 
     @property
@@ -162,7 +211,25 @@ class TourPackage(models.Model):
         from decimal import Decimal
         total = Decimal('0')
         for ps in self.package_services.filter(is_included=True):
+            # for list view, use same logic as computed price without groups double count
+            # need to avoid double counting selectable groups
+            pass
+        # reuse selectable logic but without fee
+        from decimal import Decimal as D
+        # simple sum for display (default)
+        total = D('0')
+        selectable_groups = {}
+        for ps in self.package_services.filter(is_included=True):
+            if ps.is_user_selectable and ps.option_group:
+                if ps.option_group not in selectable_groups:
+                    group_qs = self.package_services.filter(is_included=True, is_user_selectable=True, option_group=ps.option_group).order_by('-is_default_selected', 'display_order')
+                    chosen = group_qs.first()
+                    selectable_groups[ps.option_group] = chosen
+                continue
             total += ps.total_price
+        for chosen in selectable_groups.values():
+            if chosen:
+                total += chosen.total_price
         return total
 
     @property
@@ -348,6 +415,10 @@ class PackageService(models.Model):
     # is_included determines if counted in total; is_required determines booking block
     is_included = models.BooleanField(default=True)
     is_required = models.BooleanField(default=True, help_text="If required and service unavailable, booking blocked")
+    # For user choice: allow traveler to choose among options
+    is_user_selectable = models.BooleanField(default=False, help_text="If true, user can choose this option among its group")
+    option_group = models.CharField(max_length=50, blank=True, db_index=True, help_text="E.g. 'transport' or 'hotel' - mutually exclusive; only one per group is charged")
+    is_default_selected = models.BooleanField(default=False, help_text="If selectable, whether this is pre-selected")
     display_order = models.PositiveIntegerField(default=0)
     notes = models.CharField(max_length=500, blank=True)
 

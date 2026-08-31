@@ -569,23 +569,50 @@ def package_price_calculate(request, package_id):
     except (ValueError, TypeError):
         return Response({"detail": "travelers must be a positive integer"}, status=status.HTTP_400_BAD_REQUEST)
     coupon_code = request.data.get("coupon_code") or request.query_params.get("coupon_code") or request.data.get("coupon") or ""
+    selected_services = request.data.get("selected_services") or request.query_params.getlist("selected_services") or []
+    # normalize selected_services from query string like ?selected_services=1,2,3
+    if isinstance(selected_services, str):
+        selected_services = [x.strip() for x in selected_services.split(",") if x.strip()]
+    # flatten if list contains comma-separated
+    flat = []
+    for item in selected_services:
+        if isinstance(item, str) and "," in item:
+            flat.extend([x.strip() for x in item.split(",") if x.strip()])
+        else:
+            flat.append(item)
+    selected_services = flat
+    # convert to ints where possible
+    sel_ids = []
+    for sid in selected_services:
+        try:
+            sel_ids.append(int(sid))
+        except Exception:
+            pass
+
     from decimal import Decimal
     if package.trip_type == TourPackage.TripType.INDEPENDENT_PACKAGE:
-        service_cost_per_person = sum((ps.total_price for ps in package.package_services.filter(is_included=True)), Decimal('0'))
-        service_fee = package.service_fee or Decimal('0')
-        # service_cost is per package? spec says per package total then multiplied by travelers? We'll treat service_cost as per person for simplicity, but spec example multiplies? Actually spec: Flight 18k Hotel 12k etc = 44,500 + fee 1,500 = 46,000 total per booking. For multiple travelers, price scales.
-        # So we treat final = (service_cost + service_fee) * travelers before coupon? Or service_fee once? We'll treat service_fee once per booking, not per traveler? Spec shows example for 4 travelers not clear. We'll compute per traveler * travelers + fee.
-        # Let's compute: per_person_service_total = service_cost (which may already be per person)
-        # We'll assume service_cost is per person * travelers + fee
-        subtotal_per_person = service_cost_per_person + service_fee
-        # Actually better: service_cost_per_person = sum, fee separate, subtotal = (service_cost * travelers) + fee
-        # To match spec's "Flight 18k + Hotel 12k ..." total 44,500 + fee 1500 = 46k per booking (maybe per group). We'll use (service_cost * travelers) + fee if travelers>1? Provide both.
-        # For now: subtotal = service_cost_per_person * travelers + service_fee
+        if sel_ids:
+            service_cost_per_person = package.compute_price_for_selection(sel_ids) - (package.service_fee or Decimal('0'))
+            service_fee = package.service_fee or Decimal('0')
+        else:
+            service_cost_per_person = sum((ps.total_price for ps in package.package_services.filter(is_included=True) if not (ps.is_user_selectable and ps.option_group)), Decimal('0'))
+            # add default selectable groups
+            selectable_groups = {}
+            for ps in package.package_services.filter(is_included=True, is_user_selectable=True):
+                if ps.option_group not in selectable_groups:
+                    grp = package.package_services.filter(is_included=True, is_user_selectable=True, option_group=ps.option_group).order_by('-is_default_selected', 'display_order').first()
+                    selectable_groups[ps.option_group] = grp
+            for grp_ps in selectable_groups.values():
+                if grp_ps:
+                    service_cost_per_person += grp_ps.total_price
+            service_fee = package.service_fee or Decimal('0')
+            # Alternative simpler: service_cost_per_person = package.compute_price_for_selection(None) - fee
+            try:
+                service_cost_per_person = package.compute_price_for_selection(None) - service_fee
+            except Exception:
+                pass
         subtotal = service_cost_per_person * travelers + service_fee
-        # However if service includes hotel per night per group not per person, we'd need different. Keep simple.
-        # Also handle discount_price? ignore for independent
     else:
-        # group tour uses effective_price
         subtotal = package.effective_price * travelers
         service_cost_per_person = package.effective_price
         service_fee = Decimal('0')
@@ -616,16 +643,63 @@ def package_price_calculate(request, package_id):
     if final_amount < 0:
         final_amount = Decimal('0')
 
-    # Build breakdown
+    # Build breakdown with selectable groups detail
     services_breakdown = []
+    option_groups_breakdown = {}
     if package.trip_type == TourPackage.TripType.INDEPENDENT_PACKAGE:
-        for ps in package.package_services.filter(is_included=True):
-            services_breakdown.append({
+        if sel_ids:
+            # build from selected + non-selectable
+            for ps in package.package_services.filter(is_included=True):
+                if ps.is_user_selectable:
+                    if ps.id in sel_ids:
+                        services_breakdown.append({
+                            "service_name": ps.service.name,
+                            "service_type": ps.service.service_type,
+                            "quantity": ps.quantity,
+                            "unit_price": str(ps.unit_price),
+                            "total_price": str(ps.total_price),
+                            "is_user_selectable": ps.is_user_selectable,
+                            "option_group": ps.option_group,
+                        })
+                else:
+                    services_breakdown.append({
+                        "service_name": ps.service.name,
+                        "service_type": ps.service.service_type,
+                        "quantity": ps.quantity,
+                        "unit_price": str(ps.unit_price),
+                        "total_price": str(ps.total_price),
+                        "is_user_selectable": ps.is_user_selectable,
+                        "option_group": ps.option_group,
+                    })
+        else:
+            for ps in package.package_services.filter(is_included=True):
+                # skip selectable non-default for default view
+                if ps.is_user_selectable and ps.option_group:
+                    grp = package.package_services.filter(is_included=True, is_user_selectable=True, option_group=ps.option_group).order_by('-is_default_selected', 'display_order').first()
+                    if grp and grp.id != ps.id:
+                        continue
+                services_breakdown.append({
+                    "service_name": ps.service.name,
+                    "service_type": ps.service.service_type,
+                    "quantity": ps.quantity,
+                    "unit_price": str(ps.unit_price),
+                    "total_price": str(ps.total_price),
+                    "is_user_selectable": ps.is_user_selectable,
+                    "option_group": ps.option_group,
+                })
+        for ps in package.package_services.filter(is_included=True, is_user_selectable=True).select_related("service"):
+            option_groups_breakdown.setdefault(ps.option_group or "other", []).append({
+                "id": ps.id,
                 "service_name": ps.service.name,
                 "service_type": ps.service.service_type,
-                "quantity": ps.quantity,
-                "unit_price": str(ps.unit_price),
+                "service_category": ps.service.service_category,
+                "description": ps.service.description,
+                "location": ps.service.location,
+                "price": str(ps.unit_price),
                 "total_price": str(ps.total_price),
+                "quantity": ps.quantity,
+                "is_default_selected": ps.is_default_selected,
+                "extra_data": ps.service.extra_data,
             })
 
     return Response({
@@ -634,6 +708,8 @@ def package_price_calculate(request, package_id):
         "travelers": travelers,
         "service_cost_per_person": str(service_cost_per_person) if package.trip_type == TourPackage.TripType.INDEPENDENT_PACKAGE else None,
         "services": services_breakdown,
+        "option_groups": option_groups_breakdown,
+        "selected_services": sel_ids,
         "service_cost": str(service_cost_per_person * travelers) if package.trip_type == TourPackage.TripType.INDEPENDENT_PACKAGE else str(subtotal),
         "service_fee": str(service_fee),
         "subtotal": str(subtotal),
