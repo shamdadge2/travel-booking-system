@@ -7,8 +7,9 @@ import bookingApi from "../../api/bookingApi";
 import "./MyBookings.css";
 
 function statusBadgeClass(status) {
-  if (status === "confirmed" || status === "paid" || status === "completed") return "badge-success";
-  if (status === "cancelled" || status === "failed") return "badge-danger";
+  if (status === "confirmed" || status === "paid" || status === "completed" || status === "fully_confirmed") return "badge-success";
+  if (status === "cancelled" || status === "failed" || status === "refunded") return "badge-danger";
+  if (status === "services_being_arranged" || status === "partially_confirmed") return "badge-warning";
   return "badge-warning";
 }
 
@@ -65,33 +66,39 @@ export default function MyBookings() {
             </div>
           ) : (
             <div className="myb-list">
-              {bookings.map((booking) => (
-                <Link key={booking.id} to={`/my-bookings/${booking.id}`} className="myb-card">
-                  <div className="myb-card__thumb">
-                    {booking.package?.featured_image ? (
-                      <img src={booking.package.featured_image} alt={booking.package.title} />
-                    ) : (
-                      <div className="myb-card__thumb-placeholder">{booking.package?.title?.[0] || "T"}</div>
-                    )}
-                  </div>
-                  <div className="myb-card__main">
-                    <div className="myb-card__top">
-                      <span className="myb-card__ref">{booking.booking_reference}</span>
-                      <span className={`badge ${statusBadgeClass(booking.booking_status)} myb-card__badge`}>{booking.booking_status}</span>
+              {bookings.map((booking) => {
+                const isIndependent = booking.trip_type === "independent_package" || booking.package?.trip_type === "independent_package";
+                return (
+                  <Link key={booking.id} to={`/my-bookings/${booking.id}`} className="myb-card">
+                    <div className="myb-card__thumb">
+                      {booking.package?.featured_image ? (
+                        <img src={booking.package.featured_image} alt={booking.package.title} />
+                      ) : (
+                        <div className="myb-card__thumb-placeholder">{booking.package?.title?.[0] || "T"}</div>
+                      )}
                     </div>
-                    <h3 className="myb-card__title">{booking.package?.title || "Package"}</h3>
-                    <p className="myb-card__meta">
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-                      {formatDate(booking.travel_date)} · {booking.number_of_travelers} traveler(s)
-                    </p>
-                    <div className="myb-card__foot">
-                      <span className="myb-card__amount">{formatCurrency(booking.total_amount)}</span>
-                      <span className={`badge ${statusBadgeClass(booking.payment_status)} myb-card__badge--sm`}>{booking.payment_status}</span>
-                      <span className="myb-card__cta">View details →</span>
+                    <div className="myb-card__main">
+                      <div className="myb-card__top">
+                        <span className="myb-card__ref">{booking.booking_reference}</span>
+                        <span style={{ marginLeft: 6, fontSize: "0.7rem", padding: "2px 8px", borderRadius: 999, background: isIndependent ? "#0f7a6c" : "#e2e8f0", color: isIndependent ? "#fff" : "#334155" }}>
+                          {isIndependent ? "Independent" : "Group Tour"}
+                        </span>
+                        <span className={`badge ${statusBadgeClass(booking.booking_status)} myb-card__badge`} style={{ marginLeft: 6 }}>{booking.booking_status.replace(/_/g, " ")}</span>
+                      </div>
+                      <h3 className="myb-card__title">{booking.package?.title || "Package"}</h3>
+                      <p className="myb-card__meta">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                        {formatDate(booking.travel_date)} · {booking.number_of_travelers} traveler(s) · {isIndependent ? "Independent" : "Group"}
+                      </p>
+                      <div className="myb-card__foot">
+                        <span className="myb-card__amount">{formatCurrency(booking.total_amount)}</span>
+                        <span className={`badge ${statusBadgeClass(booking.payment_status)} myb-card__badge--sm`}>{booking.payment_status}</span>
+                        <span className="myb-card__cta">View details →</span>
+                      </div>
                     </div>
-                  </div>
-                </Link>
-              ))}
+                  </Link>
+                );
+              })}
             </div>
           )}
         </div>

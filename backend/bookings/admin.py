@@ -1,12 +1,19 @@
 from django.contrib import admin
 
-from .models import Booking, Traveler
+from .models import Booking, BookingService, Traveler
 
 
 class TravelerInline(admin.TabularInline):
     model = Traveler
     extra = 0
-    fields = ("full_name", "age", "gender", "phone", "email", "nationality", "id_proof")
+    fields = ("full_name", "age", "gender", "phone", "email", "nationality", "govt_id", "emergency_contact_name", "id_proof")
+
+
+class BookingServiceInline(admin.TabularInline):
+    model = BookingService
+    extra = 0
+    fields = ("service_name", "service_type", "quantity", "unit_price", "total_price", "status", "confirmed_at")
+    readonly_fields = ("confirmed_at",)
 
 
 @admin.register(Booking)
@@ -33,14 +40,14 @@ class BookingAdmin(admin.ModelAdmin):
     list_per_page = 25
 
     fieldsets = (
-        (None, {"fields": ("booking_reference", "user", "package")}),
+        (None, {"fields": ("booking_reference", "user", "package", "trip_type")}),
         ("Trip", {"fields": ("travel_date", "number_of_travelers", "special_requests")}),
-        ("Financial", {"fields": ("total_amount",)}),
+        ("Financial", {"fields": ("total_amount", "service_total", "service_fee", "discount_amount", "coupon_code")}),
         ("Status", {"fields": ("booking_status", "payment_status")}),
         ("Timestamps", {"fields": ("created_at", "updated_at")}),
     )
 
-    inlines = [TravelerInline]
+    inlines = [TravelerInline, BookingServiceInline]
 
 
 @admin.register(Traveler)

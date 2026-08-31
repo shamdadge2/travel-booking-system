@@ -29,6 +29,7 @@ class Itinerary(models.Model):
     )
     accommodation = models.CharField(max_length=255, blank=True)
     location = models.CharField(max_length=255, blank=True)
+    transportation = models.CharField(max_length=255, blank=True, help_text="e.g. Flight, Private vehicle, Train")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

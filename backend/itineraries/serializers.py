@@ -16,6 +16,7 @@ class ItinerarySerializer(serializers.ModelSerializer):
             "meals",
             "accommodation",
             "location",
+            "transportation",
             "created_at",
             "updated_at",
         ]

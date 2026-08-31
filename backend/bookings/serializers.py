@@ -4,7 +4,7 @@ from rest_framework import serializers
 
 from packages.models import TourPackage
 
-from .models import Booking, Traveler
+from .models import Booking, BookingService, Traveler
 
 
 # ---------------------------------------------------------------
@@ -21,6 +21,9 @@ class TravelerSerializer(serializers.ModelSerializer):
             "phone",
             "email",
             "nationality",
+            "govt_id",
+            "emergency_contact_name",
+            "emergency_contact_phone",
             "id_proof",
             "created_at",
         ]
@@ -41,6 +44,16 @@ class TravelerInputSerializer(serializers.Serializer):
     phone = serializers.CharField(max_length=20, required=False, allow_blank=True)
     email = serializers.EmailField(required=False, allow_blank=True)
     nationality = serializers.CharField(max_length=100, required=False, allow_blank=True)
+    govt_id = serializers.CharField(max_length=100, required=False, allow_blank=True)
+    emergency_contact_name = serializers.CharField(max_length=255, required=False, allow_blank=True)
+    emergency_contact_phone = serializers.CharField(max_length=20, required=False, allow_blank=True)
+
+
+class BookingServiceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BookingService
+        fields = ["id", "service_name", "service_type", "quantity", "unit_price", "total_price", "status", "notes", "confirmed_at"]
+        read_only_fields = ["id", "confirmed_at"]
 
 
 # ---------------------------------------------------------------
@@ -59,12 +72,15 @@ class BookingPackageSummarySerializer(serializers.ModelSerializer):
             "destination_name",
             "duration_days",
             "duration_nights",
+            "trip_type",
+            "service_fee",
         ]
 
 
 class BookingListSerializer(serializers.ModelSerializer):
     package = BookingPackageSummarySerializer(read_only=True)
     user_username = serializers.CharField(source="user.username", read_only=True)
+    trip_type = serializers.CharField(source="package.trip_type", read_only=True)
 
     class Meta:
         model = Booking
@@ -74,9 +90,14 @@ class BookingListSerializer(serializers.ModelSerializer):
             "user",
             "user_username",
             "package",
+            "trip_type",
             "travel_date",
             "number_of_travelers",
             "total_amount",
+            "service_total",
+            "service_fee",
+            "discount_amount",
+            "coupon_code",
             "booking_status",
             "payment_status",
             "created_at",
@@ -85,11 +106,27 @@ class BookingListSerializer(serializers.ModelSerializer):
 
 class BookingDetailSerializer(BookingListSerializer):
     travelers = TravelerSerializer(many=True, read_only=True)
+    booking_services = BookingServiceSerializer(many=True, read_only=True)
+    price_breakdown = serializers.SerializerMethodField()
+
+    def get_price_breakdown(self, obj):
+        from decimal import Decimal
+        if obj.trip_type == "independent_package" or (obj.package and obj.package.trip_type == "independent_package"):
+            return {
+                "service_total": str(obj.service_total or "0"),
+                "service_fee": str(obj.service_fee or "0"),
+                "discount": str(obj.discount_amount or "0"),
+                "coupon": obj.coupon_code,
+                "final": str(obj.total_amount),
+            }
+        return None
 
     class Meta(BookingListSerializer.Meta):
         fields = BookingListSerializer.Meta.fields + [
             "special_requests",
             "travelers",
+            "booking_services",
+            "price_breakdown",
             "updated_at",
         ]
 
@@ -113,6 +150,7 @@ class BookingCreateSerializer(serializers.Serializer):
     number_of_travelers = serializers.IntegerField(min_value=1)
     special_requests = serializers.CharField(required=False, allow_blank=True, default="")
     travelers = TravelerInputSerializer(many=True)
+    coupon_code = serializers.CharField(required=False, allow_blank=True, default="")
 
     def validate_travel_date(self, value):
         if value is None:
@@ -169,3 +207,9 @@ class BookingAdminUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Booking
         fields = ["booking_status", "payment_status", "special_requests"]
+
+
+class BookingServiceUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BookingService
+        fields = ["status", "notes"]

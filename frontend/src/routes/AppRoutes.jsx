@@ -24,6 +24,7 @@ import Profile from "../pages/user/Profile";
 import MyBookings from "../pages/user/MyBookings";
 import BookingDetails from "../pages/user/BookingDetails";
 import CreateBooking from "../pages/user/CreateBooking";
+import CreateIndependentBooking from "../pages/user/CreateIndependentBooking";
 import Payment from "../pages/user/Payment";
 import MyReviews from "../pages/user/MyReviews";
 import Itinerary from "../pages/user/Itinerary";
@@ -33,6 +34,8 @@ import Dashboard from "../pages/admin/Dashboard";
 import AdminUsers from "../pages/admin/Users";
 import AdminDestinations from "../pages/admin/Destinations";
 import AdminPackages from "../pages/admin/Packages";
+import AdminServices from "../pages/admin/Services";
+import AdminCoupons from "../pages/admin/Coupons";
 import AdminItineraries from "../pages/admin/Itineraries";
 import AdminBookings from "../pages/admin/Bookings";
 import AdminPayments from "../pages/admin/Payments";
@@ -63,6 +66,7 @@ export default function AppRoutes() {
           <Route path="/my-bookings/:id" element={<BookingDetails />} />
           <Route path="/my-bookings/:bookingId/itinerary" element={<Itinerary />} />
           <Route path="/bookings/new" element={<CreateBooking />} />
+          <Route path="/bookings/independent" element={<CreateIndependentBooking />} />
           <Route path="/payment/:id" element={<Payment />} />
           <Route path="/my-reviews" element={<MyReviews />} />
         </Route>
@@ -77,6 +81,8 @@ export default function AppRoutes() {
           <Route path="users" element={<AdminUsers />} />
           <Route path="destinations" element={<AdminDestinations />} />
           <Route path="packages" element={<AdminPackages />} />
+          <Route path="services" element={<AdminServices />} />
+          <Route path="coupons" element={<AdminCoupons />} />
           <Route path="itineraries" element={<AdminItineraries />} />
           <Route path="bookings" element={<AdminBookings />} />
           <Route path="payments" element={<AdminPayments />} />

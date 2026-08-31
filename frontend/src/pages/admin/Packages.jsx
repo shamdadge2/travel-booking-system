@@ -4,6 +4,7 @@ import Loader from "../../components/Loader";
 import EmptyState from "../../components/EmptyState";
 import packageApi from "../../api/packageApi";
 import destinationApi from "../../api/destinationApi";
+import serviceApi from "../../api/serviceApi";
 import "./AdminTable.css";
 import "./AdminForm.css";
 
@@ -23,12 +24,16 @@ const EMPTY_FORM = {
   max_travelers: "",
   available_slots: "",
   package_type: "adventure",
+  trip_type: "group_tour",
   difficulty: "easy",
   status: "draft",
   is_featured: false,
   start_date: "",
   end_date: "",
   pickup_location: "",
+  service_fee: "0",
+  best_time_to_visit: "",
+  category: "",
 };
 
 // Accepts either ["item text", ...] or [{item: "text"}, ...] — ChatGPT
@@ -330,6 +335,13 @@ export default function AdminPackages() {
   const [featuredUploadError, setFeaturedUploadError] = useState("");
   const [saving, setSaving] = useState(false);
 
+  // Independent package extra
+  const [allServices, setAllServices] = useState([]);
+  const [pkgServices, setPkgServices] = useState([]);
+  const [travelDates, setTravelDates] = useState([]);
+  const [newTravelDate, setNewTravelDate] = useState({ travel_date: "", status: "available", available_slots: "" });
+  const [newService, setNewService] = useState({ service: "", quantity: 1, unit_price: "", is_included: true });
+
   const load = () => {
     setIsLoading(true);
     const params = { page_size: 100 };
@@ -343,6 +355,7 @@ export default function AdminPackages() {
 
   useEffect(() => {
     destinationApi.list({ page_size: 100 }).then((data) => setDestinations(data.results));
+    serviceApi.list({ page_size: 100 }).then((data) => setAllServices(data.results || data)).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -365,8 +378,8 @@ export default function AdminPackages() {
     const TEXT_FIELDS = [
       "title", "short_description", "description",
       "duration_days", "duration_nights", "price", "discount_price",
-      "max_travelers", "available_slots", "package_type", "difficulty",
-      "start_date", "end_date", "pickup_location",
+      "max_travelers", "available_slots", "package_type", "trip_type", "difficulty",
+      "start_date", "end_date", "pickup_location", "service_fee", "best_time_to_visit", "category",
     ];
     const updates = {};
     TEXT_FIELDS.forEach((field) => {
@@ -390,6 +403,8 @@ export default function AdminPackages() {
     setActivities([]);
     setFaqs([]);
     setImages([]);
+    setPkgServices([]);
+    setTravelDates([]);
     setFeaturedFile(null);
     setFeaturedPreview("");
     setFeaturedUploadError("");
@@ -414,18 +429,24 @@ export default function AdminPackages() {
       max_travelers: full.max_travelers,
       available_slots: full.available_slots,
       package_type: full.package_type,
+      trip_type: full.trip_type || "group_tour",
       difficulty: full.difficulty,
       status: full.status,
       is_featured: full.is_featured,
       start_date: full.start_date || "",
       end_date: full.end_date || "",
       pickup_location: full.pickup_location || "",
+      service_fee: full.service_fee || "0",
+      best_time_to_visit: full.best_time_to_visit || "",
+      category: full.category || "",
     });
     setInclusions(full.inclusions.map((i) => ({ item: i.item })));
     setExclusions(full.exclusions.map((e) => ({ item: e.item })));
     setActivities(full.activities.map((a) => ({ title: a.title, day_number: a.day_number, duration: a.duration || "", description: a.description || "" })));
     setFaqs(full.faqs.map((f) => ({ question: f.question, answer: f.answer })));
     setImages(full.images);
+    setPkgServices(full.package_services || []);
+    setTravelDates(full.travel_dates || []);
     setFeaturedFile(null);
     setFeaturedPreview(full.featured_image || "");
     setFeaturedUploadError("");
@@ -595,7 +616,14 @@ export default function AdminPackages() {
 
           <div className="form-row">
             <div className="form-group">
-              <label className="form-label">Type</label>
+              <label className="form-label">Trip Type *</label>
+              <select name="trip_type" className="form-select" value={formData.trip_type} onChange={handleChange} style={{ borderColor: formData.trip_type === "independent_package" ? "#0f7a6c" : undefined, background: formData.trip_type === "independent_package" ? "#e6f5f2" : undefined }}>
+                <option value="group_tour">Group Tour — Travel With Us</option>
+                <option value="independent_package">Independent Package — We Arrange Your Trip</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Category (Theme)</label>
               <select name="package_type" className="form-select" value={formData.package_type} onChange={handleChange}>
                 {PACKAGE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
               </select>
@@ -606,13 +634,31 @@ export default function AdminPackages() {
                 {DIFFICULTIES.map((d) => <option key={d} value={d}>{d}</option>)}
               </select>
             </div>
+          </div>
+
+          <div className="form-row">
             <div className="form-group">
               <label className="form-label">Status</label>
               <select name="status" className="form-select" value={formData.status} onChange={handleChange}>
                 {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
+            <div className="form-group">
+              <label className="form-label">Best Time to Visit</label>
+              <input name="best_time_to_visit" className="form-input" placeholder="e.g. Oct-Mar" value={formData.best_time_to_visit} onChange={handleChange} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Service Fee (for Independent)</label>
+              <input type="number" min="0" step="0.01" name="service_fee" className="form-input" value={formData.service_fee} onChange={handleChange} />
+            </div>
           </div>
+          {formData.trip_type === "independent_package" && (
+            <div className="form-group">
+              <label className="form-label">Package Category</label>
+              <input name="category" className="form-input" placeholder="e.g. Kashmir Explorer" value={formData.category} onChange={handleChange} />
+              <p className="admin-form__note">For independent packages, service breakdown will be used to compute final price (services + fee). Price field above is fallback.</p>
+            </div>
+          )}
 
           <div className="form-group">
             <label className="form-label">
@@ -655,6 +701,94 @@ export default function AdminPackages() {
           <ActivitiesEditor activities={activities} onChange={setActivities} />
           <FaqsEditor faqs={faqs} onChange={setFaqs} />
 
+          {formData.trip_type === "independent_package" && (
+            <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 16, background: "#f8fafc", marginBottom: 16 }}>
+              <h4 style={{ margin: "0 0 12px", color: "#0f172a" }}>Independent Package — Services Builder</h4>
+              {!editingId ? (
+                <p className="admin-form__note">Save the package first, then reopen to add services (Flight, Hotel, Transport etc) and travel dates. Services define the price breakdown.</p>
+              ) : (
+                <>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
+                    <select className="form-select" style={{ flex: 1, minWidth: 180 }} value={newService.service} onChange={(e) => {
+                      const sid = e.target.value;
+                      setNewService({ ...newService, service: sid });
+                      const svc = allServices.find((s) => String(s.id) === sid);
+                      if (svc) setNewService((prev) => ({ ...prev, service: sid, unit_price: svc.price }));
+                    }}>
+                      <option value="">Select service</option>
+                      {allServices.map((s) => (
+                        <option key={s.id} value={s.id}>{s.name} — {s.service_type} — {formatCurrency(s.price)}</option>
+                      ))}
+                    </select>
+                    <input type="number" min="1" placeholder="Qty" className="form-input" style={{ width: 80 }} value={newService.quantity} onChange={(e) => setNewService({ ...newService, quantity: e.target.value })} />
+                    <input type="number" step="0.01" placeholder="Unit price" className="form-input" style={{ width: 130 }} value={newService.unit_price} onChange={(e) => setNewService({ ...newService, unit_price: e.target.value })} />
+                    <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: "0.85rem" }}><input type="checkbox" checked={newService.is_included} onChange={(e) => setNewService({ ...newService, is_included: e.target.checked })} /> Included</label>
+                    <button type="button" className="btn btn-primary" onClick={async () => {
+                      if (!newService.service) return;
+                      try {
+                        const created = await packageApi.packageServices(editingId, { service: Number(newService.service), quantity: Number(newService.quantity) || 1, unit_price: newService.unit_price || undefined, is_included: newService.is_included });
+                        setPkgServices([...pkgServices, created]);
+                        setNewService({ service: "", quantity: 1, unit_price: "", is_included: true });
+                      } catch (err) {
+                        setFormError(err.response?.data?.detail || JSON.stringify(err.response?.data) || "Couldn't add service");
+                      }
+                    }}>Add Service</button>
+                  </div>
+                  {pkgServices.length > 0 ? (
+                    <div style={{ border: "1px solid #e2e8f0", borderRadius: 8, overflow: "hidden", marginBottom: 12 }}>
+                      {pkgServices.map((ps) => (
+                        <div key={ps.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", borderBottom: "1px solid #f1f5f9", background: "#fff" }}>
+                          <div>
+                            <strong>{ps.service?.name}</strong> <small style={{ color: "#64748b" }}>×{ps.quantity} · {formatCurrency(ps.unit_price)} = {formatCurrency(ps.total_price)}</small>
+                            <span style={{ marginLeft: 8, fontSize: "0.72rem", padding: "2px 6px", borderRadius: 999, background: ps.is_included ? "#e6f5f2" : "#fef2f2", color: ps.is_included ? "#0f7a6c" : "#dc2626" }}>{ps.is_included ? "Included" : "Excluded"}</span>
+                          </div>
+                          <button type="button" className="admin-list-row__remove" onClick={async () => {
+                            try { await packageApi.removePackageService(ps.id); setPkgServices(pkgServices.filter((x) => x.id !== ps.id)); } catch {}
+                          }}>✕</button>
+                        </div>
+                      ))}
+                      <div style={{ padding: "8px 12px", background: "#0f172a", color: "#fff", display: "flex", justifyContent: "space-between", fontWeight: 700 }}>
+                        <span>Service Cost + Fee ({formatCurrency(formData.service_fee)})</span>
+                        <span>{formatCurrency(pkgServices.filter((p) => p.is_included).reduce((a, b) => a + Number(b.total_price), 0) + Number(formData.service_fee || 0))}</span>
+                      </div>
+                    </div>
+                  ) : <p className="admin-form__note">No services yet. Add Flight, Hotel, Transport, Guide, Activities etc.</p>}
+
+                  <h5 style={{ margin: "12px 0 8px", color: "#0f172a" }}>Travel Dates</h5>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
+                    <input type="date" className="form-input" style={{ flex: 1 }} value={newTravelDate.travel_date} onChange={(e) => setNewTravelDate({ ...newTravelDate, travel_date: e.target.value })} />
+                    <select className="form-select" value={newTravelDate.status} onChange={(e) => setNewTravelDate({ ...newTravelDate, status: e.target.value })}>
+                      <option value="available">Available</option>
+                      <option value="limited">Limited</option>
+                      <option value="not_available">Not Available</option>
+                    </select>
+                    <input type="number" placeholder="Slots (optional)" className="form-input" style={{ width: 130 }} value={newTravelDate.available_slots} onChange={(e) => setNewTravelDate({ ...newTravelDate, available_slots: e.target.value })} />
+                    <button type="button" className="btn btn-outline" onClick={async () => {
+                      if (!newTravelDate.travel_date) return;
+                      try {
+                        const created = await packageApi.addTravelDate(editingId, { travel_date: newTravelDate.travel_date, status: newTravelDate.status, available_slots: newTravelDate.available_slots || null });
+                        setTravelDates([...travelDates, created]);
+                        setNewTravelDate({ travel_date: "", status: "available", available_slots: "" });
+                      } catch (err) {
+                        setFormError(err.response?.data?.travel_date || JSON.stringify(err.response?.data) || "Couldn't add date");
+                      }
+                    }}>Add Date</button>
+                  </div>
+                  {travelDates.length > 0 && (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                      {travelDates.map((td) => (
+                        <span key={td.id} style={{ border: "1px solid #e2e8f0", borderRadius: 999, padding: "4px 10px", background: td.status === "available" ? "#e6f5f2" : td.status === "limited" ? "#fef3c7" : "#fef2f2", fontSize: "0.82rem" }}>
+                          {td.travel_date} · {td.status}
+                          <button type="button" onClick={async () => { try { await packageApi.removeTravelDate(td.id); setTravelDates(travelDates.filter((x) => x.id !== td.id)); } catch {} }} style={{ marginLeft: 6, background: "none", border: "none", cursor: "pointer" }}>✕</button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+
           {editingId ? (
             <ImagesManager pkgId={editingId} images={images} onChange={setImages} />
           ) : (
@@ -687,6 +821,7 @@ export default function AdminPackages() {
                   <th>ID</th>
                   <th>Title</th>
                   <th>Destination</th>
+                  <th>Trip Type</th>
                   <th>Price</th>
                   <th>Slots</th>
                   <th>Status</th>
@@ -700,7 +835,8 @@ export default function AdminPackages() {
                     <td>{pkg.id}</td>
                     <td>{pkg.title}</td>
                     <td>{pkg.destination_name}</td>
-                    <td>{formatCurrency(pkg.price)}</td>
+                    <td><span className="badge" style={{ background: pkg.trip_type === "independent_package" ? "#e6f5f2" : "#f1f5f9", color: pkg.trip_type === "independent_package" ? "#0f7a6c" : "#475569" }}>{pkg.trip_type === "independent_package" ? "Independent" : "Group"}</span></td>
+                    <td>{formatCurrency(pkg.trip_type === "independent_package" && pkg.computed_price ? pkg.computed_price : pkg.price)}</td>
                     <td>{pkg.available_slots}</td>
                     <td>
                       <span className={`badge ${pkg.status === "published" ? "badge-success" : "badge-warning"}`}>

@@ -44,7 +44,10 @@ export default function PackageDetails() {
     );
   }
 
-  const effectivePrice = pkg.is_discounted ? pkg.discount_price : pkg.price;
+  const isIndependent = pkg.trip_type === "independent_package";
+  const effectivePrice = isIndependent
+    ? (pkg.computed_price || pkg.price_breakdown?.final_price || pkg.price)
+    : (pkg.is_discounted ? pkg.discount_price : pkg.price);
 
   return (
     <div className="pkg-details-page">
@@ -59,21 +62,25 @@ export default function PackageDetails() {
         <div className="container pkg-details-hero__inner">
           <div className="pkg-details-hero__content">
             <div className="pkg-details-hero__top">
-              <span className="pkg-details-hero__eyebrow">{pkg.package_type}</span>
+              <span className="pkg-details-hero__eyebrow" style={isIndependent ? { background: "#0fb5a2", color: "#0a1628" } : undefined}>
+                {isIndependent ? "Independent Package · We Arrange Your Trip" : `Group Tour · Travel With Us · ${pkg.package_type}`}
+              </span>
               {pkg.review_count > 0 && (
                 <span className="pkg-details-hero__rating">
                   ★ {Number(pkg.average_rating).toFixed(1)} · {pkg.review_count} review{pkg.review_count === 1 ? "" : "s"}
                 </span>
               )}
-              {pkg.is_discounted && <span className="pkg-details-hero__sale">Sale</span>}
+              {pkg.is_discounted && !isIndependent && <span className="pkg-details-hero__sale">Sale</span>}
+              {isIndependent && pkg.best_time_to_visit && <span className="pkg-details-hero__sale" style={{ background: "#fff", color: "#0f172a" }}>Best: {pkg.best_time_to_visit}</span>}
             </div>
             <h1 className="pkg-details-hero__title">{pkg.title}</h1>
             <p className="pkg-details-hero__meta">
               {pkg.destination?.name || pkg.destination_name} · {pkg.duration_days} Days / {pkg.duration_nights} Nights · {pkg.difficulty} difficulty
+              {isIndependent ? ` · ${pkg.max_travelers} travelers max` : ""}
             </p>
-            {(pkg.start_date || pkg.end_date || pkg.pickup_location) && (
+            {(pkg.start_date || pkg.end_date || pkg.pickup_location || isIndependent) && (
               <div className="pkg-details-hero__essentials">
-                {(pkg.start_date || pkg.end_date) && (
+                {!isIndependent && (pkg.start_date || pkg.end_date) && (
                   <span className="pkg-details-hero__essential">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
                     {pkg.start_date ? formatDate(pkg.start_date) : "—"}
@@ -84,6 +91,12 @@ export default function PackageDetails() {
                   <span className="pkg-details-hero__essential">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M12 22s8-6 8-12a8 8 0 0 0-16 0c0 6 8 12 8 12z"/><circle cx="12" cy="10" r="3"/></svg>
                     {pkg.pickup_location}
+                  </span>
+                )}
+                {isIndependent && (
+                  <span className="pkg-details-hero__essential">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M12 20a8 8 0 1 0 0-16 8 8 0 0 0 0 16z"/><path d="M12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/></svg>
+                    {pkg.category || pkg.package_type}
                   </span>
                 )}
               </div>
@@ -100,7 +113,68 @@ export default function PackageDetails() {
             <section className="pkg-details__section">
               <h2>Overview</h2>
               <p>{pkg.description || pkg.short_description || "No overview provided."}</p>
+              {isIndependent && pkg.best_time_to_visit && <p style={{ marginTop: 8, color: "#0f7a6c", fontWeight: 600 }}>🗓 Best time to visit: {pkg.best_time_to_visit}</p>}
             </section>
+
+            {isIndependent && pkg.price_breakdown && (
+              <section className="pkg-details__section">
+                <h2>Services & Price Breakdown</h2>
+                <p style={{ color: "#64748b", fontSize: "0.88rem", marginBottom: 12 }}>All services are arranged by us — you pay one package price. Breakdown shown for transparency.</p>
+                <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, overflow: "hidden" }}>
+                  {pkg.price_breakdown.services.map((s) => (
+                    <div key={s.service_name + s.quantity} style={{ display: "flex", justifyContent: "space-between", padding: "10px 14px", borderBottom: "1px solid #f1f5f9", fontSize: "0.92rem" }}>
+                      <span>{s.service_name} <small style={{ color: "#64748b" }}>×{s.quantity}</small> <small style={{ color: "#0f7a6c", textTransform: "capitalize" }}>· {s.service_type}</small></span>
+                      <strong>{formatCurrency(s.total_price)}</strong>
+                    </div>
+                  ))}
+                  <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 14px", background: "#f8fafc", fontSize: "0.92rem" }}>
+                    <span>Service Cost</span><span>{formatCurrency(pkg.price_breakdown.service_cost)}</span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 14px", background: "#f8fafc", fontSize: "0.92rem" }}>
+                    <span>Company Service Fee</span><span>{formatCurrency(pkg.price_breakdown.service_fee)}</span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", padding: "12px 14px", background: "#0f172a", color: "#fff", fontWeight: 800 }}>
+                    <span>Final Package Price</span><span>{formatCurrency(pkg.price_breakdown.final_price)}</span>
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {isIndependent && pkg.package_services && pkg.package_services.length > 0 && (
+              <section className="pkg-details__section">
+                <h2>Accommodation & Services</h2>
+                <div style={{ display: "grid", gap: 10 }}>
+                  {pkg.package_services.map((ps) => (
+                    <div key={ps.id} style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <div>
+                        <strong style={{ fontSize: "0.95rem" }}>{ps.service?.name || "Service"} </strong>
+                        <span style={{ background: ps.is_included ? "#e6f5f2" : "#fef2f2", color: ps.is_included ? "#0f7a6c" : "#dc2626", fontSize: "0.72rem", padding: "2px 8px", borderRadius: 999, marginLeft: 6 }}>{ps.is_included ? "Included" : "Excluded"}</span>
+                        <p style={{ margin: "4px 0 0", color: "#64748b", fontSize: "0.84rem" }}>{ps.service?.description || ps.notes || ""} · {ps.service?.service_type} · Qty {ps.quantity}</p>
+                      </div>
+                      <div style={{ textAlign: "right" }}>
+                        <div style={{ fontWeight: 700 }}>{formatCurrency(ps.total_price)}</div>
+                        <small style={{ color: "#64748b" }}>{formatCurrency(ps.unit_price)} × {ps.quantity}</small>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {isIndependent && pkg.travel_dates && pkg.travel_dates.length > 0 && (
+              <section className="pkg-details__section">
+                <h2>Travel Dates & Availability</h2>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(150px,1fr))", gap: 10 }}>
+                  {pkg.travel_dates.map((td) => (
+                    <div key={td.id} style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: "10px 12px", background: td.status === "available" ? "#e6f5f2" : td.status === "limited" ? "#fef3c7" : "#fef2f2" }}>
+                      <div style={{ fontWeight: 700, fontSize: "0.9rem" }}>{formatDate(td.travel_date)}</div>
+                      <div style={{ fontSize: "0.78rem", textTransform: "capitalize", color: td.status === "available" ? "#0f7a6c" : td.status === "limited" ? "#92400e" : "#dc2626" }}>{td.status === "available" ? "✅ Available" : td.status === "limited" ? "⚠️ Limited" : "❌ Not Available"}</div>
+                      {td.available_slots != null && <div style={{ fontSize: "0.78rem", color: "#64748b" }}>{td.available_slots} slots</div>}
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
 
             {pkg.images.length > 0 && (
               <section className="pkg-details__section">
@@ -120,7 +194,7 @@ export default function PackageDetails() {
             )}
 
             <section className="pkg-details__section">
-              <h2>Inclusions</h2>
+              <h2>What&apos;s Included</h2>
               {pkg.inclusions.length === 0 ? (
                 <p>No inclusions listed.</p>
               ) : (
@@ -133,7 +207,7 @@ export default function PackageDetails() {
             </section>
 
             <section className="pkg-details__section">
-              <h2>Exclusions</h2>
+              <h2>What&apos;s Excluded</h2>
               {pkg.exclusions.length === 0 ? (
                 <p>No exclusions listed.</p>
               ) : (
@@ -144,6 +218,16 @@ export default function PackageDetails() {
                 </ul>
               )}
             </section>
+            {isIndependent && (
+              <section className="pkg-details__section">
+                <h2>Important Information & Cancellation Policy</h2>
+                <ul className="checklist checklist--yes">
+                  <li>All services confirmed after payment — you&apos;ll get service-wise status.</li>
+                  <li>Cancellation refunds as per policy: 30+ days 90%, 15-29 days 70%, 7-14 days 50%, &lt;7 days no refund (configurable by admin).</li>
+                  <li>Carry valid govt ID/passport as required.</li>
+                </ul>
+              </section>
+            )}
 
             <section className="pkg-details__section">
               <h2>Itinerary</h2>
@@ -204,11 +288,11 @@ export default function PackageDetails() {
           </div>
 
           <aside className="pkg-details__sidebar card">
-            {pkg.is_discounted && (
+            {pkg.is_discounted && !isIndependent && (
               <span className="pkg-details__old-price">{formatCurrency(pkg.price)}</span>
             )}
             <div className="pkg-details__price">{formatCurrency(effectivePrice)}</div>
-            <p className="pkg-details__price-unit">per person</p>
+            <p className="pkg-details__price-unit">{isIndependent ? "per package (service total)" : "per person"}</p>
 
             <p className="pkg-details__slots">
               {pkg.available_slots > 0
@@ -217,13 +301,21 @@ export default function PackageDetails() {
             </p>
 
             {pkg.available_slots > 0 ? (
-              <Link to={`/bookings/new?package=${id}`} className="btn btn-primary btn-block pkg-details__cta">
-                Book This Package
+              <Link to={isIndependent ? `/bookings/independent?package=${id}` : `/bookings/new?package=${id}`} className="btn btn-primary btn-block pkg-details__cta">
+                {isIndependent ? "Book Independent Package" : "Book This Package"}
               </Link>
             ) : (
               <button className="btn btn-primary btn-block" disabled>
                 Sold Out
               </button>
+            )}
+            {isIndependent && pkg.price_breakdown && (
+              <div style={{ marginTop: 12, borderTop: "1px solid #e2e8f0", paddingTop: 10, fontSize: "0.84rem", color: "#475569" }}>
+                <div style={{ display: "flex", justifyContent: "space-between" }}><span>Services</span><span>{formatCurrency(pkg.price_breakdown.service_cost)}</span></div>
+                <div style={{ display: "flex", justifyContent: "space-between" }}><span>Fee</span><span>{formatCurrency(pkg.price_breakdown.service_fee)}</span></div>
+                <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 800, color: "#0f172a", marginTop: 4 }}><span>Total</span><span>{formatCurrency(pkg.price_breakdown.final_price)}</span></div>
+                <Link to={`/bookings/independent?package=${id}`} style={{ display: "block", textAlign: "center", marginTop: 8, fontSize: "0.78rem", color: "#0f7a6c" }}>View price breakdown →</Link>
+              </div>
             )}
             <p className="pkg-details__sidebar-note">Free cancellation on select packages · Secure payment</p>
           </aside>

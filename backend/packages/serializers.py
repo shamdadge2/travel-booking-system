@@ -5,12 +5,18 @@ from destinations.models import Destination
 from destinations.serializers import DestinationSerializer
 
 from .models import (
+    CancellationPolicy,
+    CancellationRule,
+    Coupon,
     PackageActivity,
     PackageExclusion,
     PackageFAQ,
     PackageImage,
     PackageInclusion,
+    PackageService,
+    PackageTravelDate,
     TourPackage,
+    TravelService,
 )
 
 
@@ -53,6 +59,88 @@ class PackageFAQSerializer(serializers.ModelSerializer):
 
 
 # ---------------------------------------------------------------
+# TravelService / PackageService / TravelDate serializers
+# ---------------------------------------------------------------
+class TravelServiceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TravelService
+        fields = [
+            "id", "service_type", "service_category", "name", "description",
+            "location", "price", "unit", "is_active", "max_capacity", "extra_data",
+            "created_at", "updated_at",
+        ]
+
+
+class PackageServiceSerializer(serializers.ModelSerializer):
+    service = TravelServiceSerializer(read_only=True)
+    service_id = serializers.PrimaryKeyRelatedField(
+        queryset=TravelService.objects.filter(is_active=True), source="service", write_only=True
+    )
+    total_price = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
+
+    class Meta:
+        model = PackageService
+        fields = [
+            "id", "service", "service_id", "quantity", "unit_price",
+            "total_price", "is_included", "is_required", "display_order", "notes",
+        ]
+
+
+class PackageServiceWriteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PackageService
+        fields = ["service", "quantity", "unit_price", "is_included", "is_required", "display_order", "notes"]
+
+
+class PackageTravelDateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PackageTravelDate
+        fields = ["id", "travel_date", "status", "available_slots", "price_override", "notes"]
+
+
+class CouponSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Coupon
+        fields = [
+            "id", "code", "discount_type", "discount_value", "min_booking_amount",
+            "max_discount", "valid_from", "valid_until", "usage_limit", "used_count",
+            "is_active", "applicable_trip_type", "created_at",
+        ]
+
+
+class CancellationRuleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CancellationRule
+        fields = ["id", "days_before_min", "days_before_max", "refund_percent", "description"]
+
+
+class CancellationPolicySerializer(serializers.ModelSerializer):
+    rules = CancellationRuleSerializer(many=True, required=False)
+
+    class Meta:
+        model = CancellationPolicy
+        fields = ["id", "package", "name", "description", "is_active", "rules"]
+
+    def create(self, validated_data):
+        rules_data = validated_data.pop("rules", [])
+        policy = CancellationPolicy.objects.create(**validated_data)
+        for r in rules_data:
+            CancellationRule.objects.create(policy=policy, **r)
+        return policy
+
+    def update(self, instance, validated_data):
+        rules_data = validated_data.pop("rules", None)
+        for attr, val in validated_data.items():
+            setattr(instance, attr, val)
+        instance.save()
+        if rules_data is not None:
+            instance.rules.all().delete()
+            for r in rules_data:
+                CancellationRule.objects.create(policy=instance, **r)
+        return instance
+
+
+# ---------------------------------------------------------------
 # Read serializers
 # ---------------------------------------------------------------
 class TourPackageListSerializer(serializers.ModelSerializer):
@@ -84,6 +172,35 @@ class TourPackageListSerializer(serializers.ModelSerializer):
             return obj.review_count_annotated
         return obj.reviews.count()
 
+    trip_type_display = serializers.CharField(source="get_trip_type_display", read_only=True)
+    service_fee = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
+    best_time_to_visit = serializers.CharField(read_only=True)
+    computed_price = serializers.SerializerMethodField()
+    service_cost_total = serializers.SerializerMethodField()
+
+    def get_computed_price(self, obj):
+        try:
+            if obj.trip_type == obj.TripType.INDEPENDENT_PACKAGE and hasattr(obj, 'package_services'):
+                # sum included services + fee
+                from decimal import Decimal
+                total = Decimal('0')
+                for ps in obj.package_services.all() if hasattr(obj, '_prefetched_objects_cache') else obj.package_services.filter(is_included=True):
+                    total += ps.total_price
+                return total + (obj.service_fee or Decimal('0'))
+        except Exception:
+            pass
+        return obj.effective_price
+
+    def get_service_cost_total(self, obj):
+        try:
+            from decimal import Decimal
+            total = Decimal('0')
+            for ps in obj.package_services.all() if hasattr(obj, '_prefetched_objects_cache') else obj.package_services.filter(is_included=True):
+                total += ps.total_price
+            return total
+        except Exception:
+            return None
+
     class Meta:
         model = TourPackage
         fields = [
@@ -98,12 +215,16 @@ class TourPackageListSerializer(serializers.ModelSerializer):
             "price",
             "discount_price",
             "effective_price",
+            "computed_price",
+            "service_cost_total",
             "is_discounted",
             "average_rating",
             "review_count",
             "max_travelers",
             "available_slots",
             "package_type",
+            "trip_type",
+            "trip_type_display",
             "difficulty",
             "start_date",
             "end_date",
@@ -111,6 +232,9 @@ class TourPackageListSerializer(serializers.ModelSerializer):
             "featured_image",
             "status",
             "is_featured",
+            "service_fee",
+            "best_time_to_visit",
+            "category",
             "created_at",
         ]
 
@@ -131,6 +255,35 @@ class TourPackageDetailSerializer(TourPackageListSerializer):
     exclusions = PackageExclusionSerializer(many=True, read_only=True)
     activities = PackageActivitySerializer(many=True, read_only=True)
     faqs = PackageFAQSerializer(many=True, read_only=True)
+    package_services = PackageServiceSerializer(many=True, read_only=True)
+    travel_dates = PackageTravelDateSerializer(many=True, read_only=True)
+    price_breakdown = serializers.SerializerMethodField()
+
+    def get_price_breakdown(self, obj):
+        if obj.trip_type != obj.TripType.INDEPENDENT_PACKAGE:
+            return None
+        from decimal import Decimal
+        services = []
+        total = Decimal('0')
+        for ps in obj.package_services.filter(is_included=True):
+            services.append({
+                "id": ps.id,
+                "service_name": ps.service.name,
+                "service_type": ps.service.service_type,
+                "service_category": ps.service.service_category,
+                "quantity": ps.quantity,
+                "unit_price": str(ps.unit_price),
+                "total_price": str(ps.total_price),
+            })
+            total += ps.total_price
+        service_fee = obj.service_fee or Decimal('0')
+        final = total + service_fee
+        return {
+            "services": services,
+            "service_cost": str(total),
+            "service_fee": str(service_fee),
+            "final_price": str(final),
+        }
 
     class Meta(TourPackageListSerializer.Meta):
         fields = TourPackageListSerializer.Meta.fields + [
@@ -141,6 +294,9 @@ class TourPackageDetailSerializer(TourPackageListSerializer):
             "exclusions",
             "activities",
             "faqs",
+            "package_services",
+            "travel_dates",
+            "price_breakdown",
             "updated_at",
         ]
 
@@ -183,6 +339,7 @@ class TourPackageWriteSerializer(serializers.ModelSerializer):
             "max_travelers",
             "available_slots",
             "package_type",
+            "trip_type",
             "difficulty",
             "start_date",
             "end_date",
@@ -190,6 +347,9 @@ class TourPackageWriteSerializer(serializers.ModelSerializer):
             "featured_image",
             "status",
             "is_featured",
+            "service_fee",
+            "best_time_to_visit",
+            "category",
             "inclusions",
             "exclusions",
             "activities",

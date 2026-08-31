@@ -22,7 +22,8 @@ export default function BookingDetails() {
       .finally(() => setIsLoading(false));
   }, [id]);
 
-  const canCancel = booking && ["pending", "confirmed"].includes(booking.booking_status);
+  const isIndependent = booking && (booking.trip_type === "independent_package" || booking.package?.trip_type === "independent_package");
+  const canCancel = booking && ["pending", "payment_pending", "confirmed", "services_being_arranged", "partially_confirmed", "fully_confirmed"].includes(booking.booking_status);
 
   const handleCancel = async () => {
     setCancelError("");
@@ -49,14 +50,30 @@ export default function BookingDetails() {
     );
   }
 
+  const handleInvoice = async () => {
+    try {
+      const data = await bookingApi.invoice(id);
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `invoice-${booking.booking_reference}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setCancelError("Couldn't generate invoice.");
+    }
+  };
+
   return (
     <div className="bd-page">
       <section className="bd-hero">
         <div className="container bd-hero__inner">
           <Link to="/my-bookings" className="bd-hero__back">&larr; Back to My Bookings</Link>
-          <span className="bd-hero__eyebrow">BOOKING DETAILS</span>
+          <span className="bd-hero__eyebrow">BOOKING DETAILS · {isIndependent ? "Independent Package" : "Group Tour"}</span>
           <h1 className="bd-hero__title">{booking.package.title}</h1>
-          <p className="bd-hero__ref">Booking Reference: <strong>{booking.booking_reference}</strong></p>
+          <p className="bd-hero__ref">Booking Reference: <strong>{booking.booking_reference}</strong> · {isIndependent ? "We Arrange Your Trip" : "Travel With Us"}</p>
+          <p className="bd-hero__ref">Travel Date: {formatDate(booking.travel_date)} · {booking.number_of_travelers} traveler(s) · Payment: {booking.payment_status}</p>
         </div>
       </section>
 
@@ -66,30 +83,60 @@ export default function BookingDetails() {
             <div className="bd-card">
               <h3 className="bd-card__heading">Trip Details</h3>
               <dl className="bd-dl">
-                <dt>Travel Date</dt>
-                <dd>{formatDate(booking.travel_date)}</dd>
-                <dt>Travelers</dt>
-                <dd>{booking.number_of_travelers}</dd>
-                <dt>Total Amount</dt>
-                <dd>{formatCurrency(booking.total_amount)}</dd>
-                <dt>Special Requests</dt>
-                <dd>{booking.special_requests || "—"}</dd>
+                <dt>Package</dt><dd>{booking.package.title} ({isIndependent ? "Independent" : "Group Tour"})</dd>
+                <dt>Travel Date</dt><dd>{formatDate(booking.travel_date)}</dd>
+                <dt>Travelers</dt><dd>{booking.number_of_travelers}</dd>
+                <dt>Type</dt><dd>{isIndependent ? "Independent Package" : "Group Tour"}</dd>
+                <dt>Total Amount</dt><dd>{formatCurrency(booking.total_amount)}</dd>
+                {isIndependent && booking.service_total && <><dt>Service Total</dt><dd>{formatCurrency(booking.service_total)}</dd><dt>Service Fee</dt><dd>{formatCurrency(booking.service_fee)}</dd><dt>Discount</dt><dd>{formatCurrency(booking.discount_amount)} {booking.coupon_code && `(${booking.coupon_code})`}</dd></>}
+                <dt>Special Requests</dt><dd>{booking.special_requests || "—"}</dd>
               </dl>
+
+              {isIndependent && booking.booking_services && booking.booking_services.length > 0 && (
+                <>
+                  <h3 className="bd-card__heading">Services Arranged</h3>
+                  <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
+                    {booking.booking_services.map((s) => (
+                      <div key={s.id} style={{ display: "flex", justifyContent: "space-between", padding: "10px 14px", borderBottom: "1px solid #f1f5f9", fontSize: "0.92rem" }}>
+                        <span>
+                          {s.status === "confirmed" ? "✅" : s.status === "processing" ? "⏳" : "⏳"} {s.service_name} <small style={{ color: "#64748b" }}>· {s.service_type}</small>
+                        </span>
+                        <span style={{ textTransform: "capitalize", fontSize: "0.8rem", padding: "2px 8px", borderRadius: 999, background: s.status === "confirmed" ? "#e6f5f2" : "#fef3c7", color: s.status === "confirmed" ? "#0f7a6c" : "#92400e" }}>{s.status}</span>
+                      </div>
+                    ))}
+                    <div style={{ padding: "10px 14px", background: booking.booking_status === "fully_confirmed" ? "#e6f5f2" : "#f8fafc", textAlign: "center", fontWeight: 700, color: booking.booking_status === "fully_confirmed" ? "#0f7a6c" : "#475569" }}>
+                      {booking.booking_status === "fully_confirmed" ? "Fully Confirmed ✅" : booking.booking_status === "partially_confirmed" ? "Partially Confirmed" : "Services Being Arranged"}
+                    </div>
+                  </div>
+                </>
+              )}
 
               <h3 className="bd-card__heading">Travelers</h3>
               <ul className="bd-travelers">
                 {booking.travelers.map((traveler) => (
                   <li key={traveler.id}>
-                    <strong>{traveler.full_name}</strong> &middot; {traveler.age} yrs &middot;{" "}
-                    {traveler.gender}
-                    {traveler.email ? ` · ${traveler.email}` : ""}
+                    <strong>{traveler.full_name}</strong> &middot; {traveler.age} yrs &middot; {traveler.gender}
+                    {traveler.email ? ` · ${traveler.email}` : ""} {traveler.phone ? ` · ${traveler.phone}` : ""}
+                    {traveler.govt_id && ` · ID: ${traveler.govt_id}`}
+                    {traveler.emergency_contact_name && <><br /><small style={{ color: "#64748b" }}>Emergency: {traveler.emergency_contact_name} {traveler.emergency_contact_phone}</small></>}
                   </li>
                 ))}
               </ul>
 
+              {isIndependent && booking.price_breakdown && (
+                <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 12, padding: 12, marginBottom: 12 }}>
+                  <h4 style={{ margin: "0 0 8px", fontSize: "0.95rem" }}>Price Breakdown</h4>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.9rem" }}><span>Service Total</span><span>{formatCurrency(booking.price_breakdown.service_total)}</span></div>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.9rem" }}><span>Service Fee</span><span>{formatCurrency(booking.price_breakdown.service_fee)}</span></div>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.9rem" }}><span>Discount</span><span>-{formatCurrency(booking.price_breakdown.discount)}</span></div>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 800, borderTop: "1px solid #e2e8f0", paddingTop: 6, marginTop: 6 }}><span>Final</span><span>{formatCurrency(booking.price_breakdown.final)}</span></div>
+                </div>
+              )}
+
               <Link to={`/my-bookings/${booking.id}/itinerary`} className="bd-link">
                 View full itinerary &rarr;
               </Link>
+              <button onClick={handleInvoice} className="bd-link" style={{ marginLeft: 12, background: "none", border: "none", color: "#0f7a6c", cursor: "pointer", fontWeight: 700 }}>Download Invoice ↓</button>
             </div>
 
             <aside className="bd-card bd-sidebar">

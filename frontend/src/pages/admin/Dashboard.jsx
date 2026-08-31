@@ -20,24 +20,40 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const [serverStats, setServerStats] = useState(null);
   useEffect(() => {
     Promise.all([
       bookingApi.list({ page_size: 100 }),
       packageApi.list({ page_size: 100 }),
       authApi.listUsers(),
+      bookingApi.stats().catch(() => null),
     ])
-      .then(([bookingsData, packagesData, usersData]) => {
+      .then(([bookingsData, packagesData, usersData, statsData]) => {
         const bookings = bookingsData.results;
         const revenue = bookings
           .filter((b) => b.payment_status === "paid")
           .reduce((sum, b) => sum + Number(b.total_amount), 0);
 
-        setStats([
-          { label: "Total Users", value: String(usersData.length) },
-          { label: "Total Packages", value: String(packagesData.count) },
-          { label: "Total Bookings", value: String(bookingsData.count) },
-          { label: "Revenue (Paid)", value: formatCurrency(revenue) },
-        ]);
+        if (statsData) {
+          setServerStats(statsData);
+          setStats([
+            { label: "Total Users", value: String(usersData.length) },
+            { label: "Total Packages", value: String(packagesData.count) },
+            { label: "Total Bookings", value: String(statsData.total_bookings) },
+            { label: "Group Tours", value: String(statsData.group_tour_bookings) },
+            { label: "Independent", value: String(statsData.independent_bookings) },
+            { label: "Revenue (Paid)", value: formatCurrency(statsData.total_revenue) },
+            { label: "Group Revenue", value: formatCurrency(statsData.group_revenue) },
+            { label: "Independent Revenue", value: formatCurrency(statsData.independent_revenue) },
+          ]);
+        } else {
+          setStats([
+            { label: "Total Users", value: String(usersData.length) },
+            { label: "Total Packages", value: String(packagesData.count) },
+            { label: "Total Bookings", value: String(bookingsData.count) },
+            { label: "Revenue (Paid)", value: formatCurrency(revenue) },
+          ]);
+        }
 
         setRecentBookings(bookings.slice(0, 5));
 
@@ -84,6 +100,25 @@ export default function Dashboard() {
         ))}
       </div>
 
+      {serverStats && (
+        <div className="card admin-dashboard__panel" style={{ marginBottom: 16, padding: 16 }}>
+          <h3>Revenue Split & Analytics</h3>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 12, marginBottom: 12 }}>
+            <div><strong>Total Revenue</strong><br />{formatCurrency(serverStats.total_revenue)}</div>
+            <div><strong>Group Revenue</strong><br />{formatCurrency(serverStats.group_revenue)}</div>
+            <div><strong>Independent Revenue</strong><br />{formatCurrency(serverStats.independent_revenue)}</div>
+            <div><strong>Cancellation Rate</strong><br />{serverStats.cancellation_rate}%</div>
+            <div><strong>Avg Booking Value</strong><br />{formatCurrency(serverStats.average_booking_value)}</div>
+          </div>
+          <h4>Popular Destinations</h4>
+          <ul className="admin-dashboard__popular">
+            {serverStats.popular_destinations.map((d) => (
+              <li key={d.name}><span>{d.name}</span><span className="badge badge-accent">{d.count}</span></li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <div className="admin-dashboard__grid">
         <div className="card admin-dashboard__panel">
           <h3>Recent Bookings</h3>
@@ -97,6 +132,7 @@ export default function Dashboard() {
                   <th>Customer</th>
                   <th>Package</th>
                   <th>Amount</th>
+                  <th>Type</th>
                   <th>Status</th>
                 </tr>
               </thead>
@@ -107,9 +143,10 @@ export default function Dashboard() {
                     <td>{b.user_username}</td>
                     <td>{b.package.title}</td>
                     <td>{formatCurrency(b.total_amount)}</td>
+                    <td><span className="badge" style={{ background: b.trip_type === "independent_package" ? "#e6f5f2" : "#f1f5f9", color: b.trip_type === "independent_package" ? "#0f7a6c" : "#475569" }}>{b.trip_type === "independent_package" ? "Independent" : "Group"}</span></td>
                     <td>
-                      <span className={`badge ${b.booking_status === "confirmed" ? "badge-success" : "badge-warning"}`}>
-                        {b.booking_status}
+                      <span className={`badge ${b.booking_status === "confirmed" || b.booking_status === "fully_confirmed" ? "badge-success" : "badge-warning"}`}>
+                        {b.booking_status.replace(/_/g, " ")}
                       </span>
                     </td>
                   </tr>
@@ -143,7 +180,7 @@ export default function Dashboard() {
             <ul className="admin-dashboard__popular">
               {statusBreakdown.map(([status, count]) => (
                 <li key={status}>
-                  <span style={{ textTransform: "capitalize" }}>{status}</span>
+                  <span style={{ textTransform: "capitalize" }}>{status.replace(/_/g, " ")}</span>
                   <span className="badge badge-success">{count}</span>
                 </li>
               ))}

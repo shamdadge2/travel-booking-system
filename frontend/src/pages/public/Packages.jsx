@@ -10,6 +10,7 @@ const PACKAGE_TYPES = ["adventure", "honeymoon", "family", "pilgrimage", "wildli
 export default function Packages() {
   const [search, setSearch] = useState("");
   const [type, setType] = useState("");
+  const [tripType, setTripType] = useState("");
   const [sort, setSort] = useState("");
   const [packages, setPackages] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -23,6 +24,7 @@ export default function Packages() {
     const params = { page_size: 24 };
     if (search) params.search = search;
     if (type) params.package_type = type;
+    if (tripType) params.trip_type = tripType;
     if (sort === "price_asc") params.ordering = "price";
     if (sort === "price_desc") params.ordering = "-price";
 
@@ -37,7 +39,7 @@ export default function Packages() {
       .finally(() => setIsLoading(false));
 
     return () => controller.abort();
-  }, [search, type, sort]);
+  }, [search, type, tripType, sort]);
 
   return (
     <div className="pkg-page">
@@ -71,8 +73,14 @@ export default function Packages() {
               </div>
 
               <div className="pkg-hero__selects">
+                <select className="pkg-hero__select" value={tripType} onChange={(event) => setTripType(event.target.value)}>
+                  <option value="">All Trip Types</option>
+                  <option value="group_tour">Group Tour — Travel With Us</option>
+                  <option value="independent_package">Independent — We Arrange Your Trip</option>
+                </select>
+
                 <select className="pkg-hero__select" value={type} onChange={(event) => setType(event.target.value)}>
-                  <option value="">All Types</option>
+                  <option value="">All Categories</option>
                   {PACKAGE_TYPES.map((t) => (
                     <option key={t} value={t}>
                       {t.charAt(0).toUpperCase() + t.slice(1)}
@@ -99,12 +107,13 @@ export default function Packages() {
               <p className="pkg-content__count">
                 Showing <strong>{packages.length}</strong> trip{packages.length !== 1 ? "s" : ""}
                 {type ? <> · {type}</> : null}
+                {tripType ? <> · {tripType === "independent_package" ? "Independent" : "Group Tour"}</> : null}
               </p>
-              {(search || type || sort) && (
+              {(search || type || tripType || sort) && (
                 <button
                   type="button"
                   className="pkg-content__reset"
-                  onClick={() => { setSearch(""); setType(""); setSort(""); }}
+                  onClick={() => { setSearch(""); setType(""); setTripType(""); setSort(""); }}
                 >
                   Clear filters
                 </button>

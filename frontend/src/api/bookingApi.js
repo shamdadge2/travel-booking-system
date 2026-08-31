@@ -6,6 +6,9 @@ const bookingApi = {
   create: (payload) => api.post("/bookings/", payload).then((res) => res.data),
   update: (id, payload) => api.patch(`/bookings/${id}/`, payload).then((res) => res.data),
   cancel: (id) => api.post(`/bookings/${id}/cancel/`).then((res) => res.data),
+  invoice: (id) => api.get(`/bookings/${id}/invoice/`).then((res) => res.data),
+  stats: () => api.get("/bookings/stats/").then((res) => res.data),
+  updateBookingService: (bookingId, serviceId, payload) => api.patch(`/bookings/${bookingId}/services/${serviceId}/`, payload).then((res) => res.data),
 
   uploadTravelerIdProof: (travelerId, file) => {
     const formData = new FormData();

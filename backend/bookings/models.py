@@ -29,15 +29,22 @@ def traveler_id_proof_path(instance, filename):
 class Booking(models.Model):
     class BookingStatus(models.TextChoices):
         PENDING = "pending", "Pending"
+        PAYMENT_PENDING = "payment_pending", "Payment Pending"
         CONFIRMED = "confirmed", "Confirmed"
+        SERVICES_BEING_ARRANGED = "services_being_arranged", "Services Being Arranged"
+        PARTIALLY_CONFIRMED = "partially_confirmed", "Partially Confirmed"
+        FULLY_CONFIRMED = "fully_confirmed", "Fully Confirmed"
         CANCELLED = "cancelled", "Cancelled"
         COMPLETED = "completed", "Completed"
+        REFUND_PROCESSING = "refund_processing", "Refund Processing"
+        REFUNDED = "refunded", "Refunded"
 
     class PaymentStatus(models.TextChoices):
         PENDING = "pending", "Pending"
         PAID = "paid", "Paid"
         FAILED = "failed", "Failed"
         REFUNDED = "refunded", "Refunded"
+        REFUND_PROCESSING = "refund_processing", "Refund Processing"
 
     booking_reference = models.CharField(max_length=20, unique=True, editable=False)
 
@@ -56,12 +63,19 @@ class Booking(models.Model):
 
     # Always computed server-side at booking time — never trust a client-sent amount.
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    # Independent package breakdown snapshots
+    service_total = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    service_fee = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    discount_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    coupon_code = models.CharField(max_length=50, blank=True)
+    # For independent packages, we keep trip_type snapshot
+    trip_type = models.CharField(max_length=30, blank=True)
 
     booking_status = models.CharField(
-        max_length=20, choices=BookingStatus.choices, default=BookingStatus.PENDING
+        max_length=30, choices=BookingStatus.choices, default=BookingStatus.PENDING
     )
     payment_status = models.CharField(
-        max_length=20, choices=PaymentStatus.choices, default=PaymentStatus.PENDING
+        max_length=30, choices=PaymentStatus.choices, default=PaymentStatus.PENDING
     )
     special_requests = models.TextField(blank=True)
 
@@ -94,6 +108,9 @@ class Traveler(models.Model):
     phone = models.CharField(max_length=20, blank=True)
     email = models.EmailField(blank=True)
     nationality = models.CharField(max_length=100, blank=True)
+    govt_id = models.CharField(max_length=100, blank=True, help_text="Government ID / Passport number if required")
+    emergency_contact_name = models.CharField(max_length=255, blank=True)
+    emergency_contact_phone = models.CharField(max_length=20, blank=True)
     id_proof = models.FileField(
         upload_to=traveler_id_proof_path, blank=True, null=True
     )
@@ -105,3 +122,30 @@ class Traveler(models.Model):
 
     def __str__(self):
         return f"{self.full_name} ({self.booking.booking_reference})"
+
+
+class BookingService(models.Model):
+    class ServiceStatus(models.TextChoices):
+        PENDING = "pending", "Pending"
+        PROCESSING = "processing", "Processing"
+        CONFIRMED = "confirmed", "Confirmed"
+        CANCELLED = "cancelled", "Cancelled"
+
+    booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name="booking_services")
+    # Snapshot of PackageService at booking time
+    package_service = models.ForeignKey('packages.PackageService', on_delete=models.SET_NULL, null=True, blank=True)
+    service_name = models.CharField(max_length=255)
+    service_type = models.CharField(max_length=30)
+    quantity = models.PositiveIntegerField(default=1)
+    unit_price = models.DecimalField(max_digits=10, decimal_places=2)
+    total_price = models.DecimalField(max_digits=10, decimal_places=2)
+    status = models.CharField(max_length=20, choices=ServiceStatus.choices, default=ServiceStatus.PENDING)
+    notes = models.CharField(max_length=255, blank=True)
+    confirmed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "booking_services"
+        ordering = ["id"]
+
+    def __str__(self):
+        return f"{self.booking.booking_reference} - {self.service_name} ({self.status})"

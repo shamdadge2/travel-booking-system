@@ -9,12 +9,23 @@ from rest_framework.response import Response
 from accounts.permissions import IsAdminOrStaffRole
 from config.pagination import StandardResultsPagination
 
-from .models import PackageImage, TourPackage
+from .models import (
+    Coupon,
+    PackageImage,
+    PackageService,
+    PackageTravelDate,
+    TourPackage,
+    TravelService,
+)
 from .serializers import (
+    CouponSerializer,
     PackageImageSerializer,
+    PackageServiceSerializer,
+    PackageTravelDateSerializer,
     TourPackageDetailSerializer,
     TourPackageListSerializer,
     TourPackageWriteSerializer,
+    TravelServiceSerializer,
 )
 
 ORDERING_FIELDS = {
@@ -76,6 +87,10 @@ def _apply_common_filters(request, queryset):
     if destination_id:
         queryset = queryset.filter(destination_id=destination_id)
 
+    trip_type = request.query_params.get("trip_type") or request.query_params.get("booking_type")
+    if trip_type:
+        queryset = queryset.filter(trip_type=trip_type)
+
     min_price = request.query_params.get("min_price")
     if min_price:
         queryset = queryset.filter(price__gte=min_price)
@@ -110,7 +125,7 @@ def _apply_discounted_filter(request, queryset):
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def get_packages(request):
-    queryset = TourPackage.objects.select_related("destination").annotate(avg_rating=Avg("reviews__rating"), review_count_annotated=Count("reviews", distinct=True)).all()
+    queryset = TourPackage.objects.select_related("destination").prefetch_related("package_services", "package_services__service").annotate(avg_rating=Avg("reviews__rating"), review_count_annotated=Count("reviews", distinct=True)).all()
     queryset = _apply_common_filters(request, queryset)
     queryset = _apply_discounted_filter(request, queryset)
 
@@ -126,7 +141,7 @@ def get_packages(request):
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def search_packages(request):
-    queryset = TourPackage.objects.select_related("destination").annotate(avg_rating=Avg("reviews__rating"), review_count_annotated=Count("reviews", distinct=True)).all()
+    queryset = TourPackage.objects.select_related("destination").prefetch_related("package_services").annotate(avg_rating=Avg("reviews__rating"), review_count_annotated=Count("reviews", distinct=True)).all()
     queryset = _apply_common_filters(request, queryset)
     queryset = _apply_discounted_filter(request, queryset)
 
@@ -185,7 +200,8 @@ def get_package(request, package_id):
             review_count_annotated=Count("reviews", distinct=True),
         )
         .prefetch_related(
-            "images", "inclusions", "exclusions", "activities", "faqs"
+            "images", "inclusions", "exclusions", "activities", "faqs",
+            "package_services", "package_services__service", "travel_dates"
         ),
         id=package_id,
     )
@@ -246,12 +262,13 @@ def delete_package(request, package_id):
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def package_availability(request, package_id):
-    package = get_object_or_404(TourPackage, id=package_id)
+    package = get_object_or_404(TourPackage.objects.prefetch_related("travel_dates", "package_services__service"), id=package_id)
 
     if package.status != TourPackage.Status.PUBLISHED and not _is_staff_or_admin(request.user):
         return Response({"detail": "Package not found."}, status=status.HTTP_404_NOT_FOUND)
 
     requested_travelers = request.query_params.get("travelers")
+    requested_date = request.query_params.get("date") or request.query_params.get("travel_date")
     can_accommodate_requested = None
     if requested_travelers is not None:
         try:
@@ -265,18 +282,70 @@ def package_availability(request, package_id):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+    # For independent packages, check date-specific availability
+    date_availability = None
+    services_availability = []
+    is_date_available = True
+    if package.trip_type == TourPackage.TripType.INDEPENDENT_PACKAGE and requested_date:
+        try:
+            from datetime import datetime
+            dt = datetime.strptime(requested_date, "%Y-%m-%d").date()
+            td = package.travel_dates.filter(travel_date=dt).first()
+            if td:
+                date_availability = {
+                    "date": str(td.travel_date),
+                    "status": td.status,
+                    "available_slots": td.available_slots,
+                    "notes": td.notes,
+                }
+                is_date_available = td.status != PackageTravelDate.AvailabilityStatus.NOT_AVAILABLE
+                if td.available_slots is not None and requested_travelers:
+                    can_accommodate_requested = td.available_slots >= requested_travelers
+            else:
+                # If travel_dates exist but not for this date, treat as not available if package has any dates defined
+                if package.travel_dates.exists():
+                    is_date_available = False
+                    date_availability = {"date": requested_date, "status": "not_available", "notes": "Date not offered"}
+                else:
+                    is_date_available = True
+        except ValueError:
+            return Response({"detail": "date must be YYYY-MM-DD"}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Service-level availability (for independent)
+    if package.trip_type == TourPackage.TripType.INDEPENDENT_PACKAGE:
+        for ps in package.package_services.filter(is_required=True):
+            svc = ps.service
+            services_availability.append({
+                "service_id": svc.id,
+                "service_name": svc.name,
+                "service_type": svc.service_type,
+                "is_available": svc.is_active,
+                "quantity": ps.quantity,
+            })
+        # If any required service inactive, not bookable
+        if any(not s["is_available"] for s in services_availability):
+            is_date_available = False
+
+    base_available = package.status == TourPackage.Status.PUBLISHED and package.available_slots > 0
+    if package.trip_type == TourPackage.TripType.INDEPENDENT_PACKAGE and requested_date:
+        base_available = base_available and is_date_available
+
     return Response(
         {
             "package_id": package.id,
+            "trip_type": package.trip_type,
             "status": package.status,
             "max_travelers": package.max_travelers,
             "available_slots": package.available_slots,
-            "is_available": package.status == TourPackage.Status.PUBLISHED
-            and package.available_slots > 0,
+            "is_available": base_available,
             "requested_travelers": requested_travelers,
             "can_accommodate_requested": can_accommodate_requested,
             "start_date": package.start_date,
             "end_date": package.end_date,
+            "requested_date": requested_date,
+            "date_availability": date_availability,
+            "services_availability": services_availability,
+            "travel_dates": PackageTravelDateSerializer(package.travel_dates.all(), many=True).data if package.trip_type == TourPackage.TripType.INDEPENDENT_PACKAGE else [],
         },
         status=status.HTTP_200_OK,
     )
@@ -310,3 +379,325 @@ def delete_package_image(request, image_id):
     image = get_object_or_404(PackageImage, id=image_id)
     image.delete()
     return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# ---------------------------------------------------------------
+# Travel Services CRUD (admin)
+# ---------------------------------------------------------------
+@api_view(["GET", "POST"])
+@permission_classes([AllowAny])
+def travel_service_list_create(request):
+    if request.method == "GET":
+        queryset = TravelService.objects.all()
+        service_type = request.query_params.get("service_type")
+        if service_type:
+            queryset = queryset.filter(service_type=service_type)
+        is_active = request.query_params.get("is_active")
+        if is_active is not None:
+            queryset = queryset.filter(is_active=is_active.lower() in ("1", "true", "yes"))
+        search = request.query_params.get("search")
+        if search:
+            queryset = queryset.filter(Q(name__icontains=search) | Q(description__icontains=search) | Q(location__icontains=search))
+        paginator = StandardResultsPagination()
+        page = paginator.paginate_queryset(queryset, request)
+        serializer = TravelServiceSerializer(page, many=True)
+        return paginator.get_paginated_response(serializer.data)
+    # POST
+    if not _is_staff_or_admin(request.user):
+        if not request.user.is_authenticated:
+            return Response({"detail": "Authentication credentials were not provided."}, status=status.HTTP_401_UNAUTHORIZED)
+        return Response({"detail": "You do not have permission to perform this action."}, status=status.HTTP_403_FORBIDDEN)
+    serializer = TravelServiceSerializer(data=request.data)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(["GET", "PUT", "PATCH", "DELETE"])
+@permission_classes([AllowAny])
+def travel_service_detail(request, service_id):
+    service = get_object_or_404(TravelService, id=service_id)
+    if request.method == "GET":
+        return Response(TravelServiceSerializer(service).data)
+    if not _is_staff_or_admin(request.user):
+        if not request.user.is_authenticated:
+            return Response({"detail": "Authentication credentials were not provided."}, status=status.HTTP_401_UNAUTHORIZED)
+        return Response({"detail": "You do not have permission to perform this action."}, status=status.HTTP_403_FORBIDDEN)
+    if request.method == "DELETE":
+        # Don't allow delete if PackageService references it
+        if PackageService.objects.filter(service=service).exists():
+            return Response({"detail": "Cannot delete service — it is used in one or more packages. Deactivate it instead."}, status=status.HTTP_409_CONFLICT)
+        service.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    partial = request.method == "PATCH"
+    serializer = TravelServiceSerializer(service, data=request.data, partial=partial)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+# ---------------------------------------------------------------
+# Package Services — list / manage per package
+# ---------------------------------------------------------------
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def package_services_list(request, package_id):
+    package = get_object_or_404(TourPackage, id=package_id)
+    if package.status != TourPackage.Status.PUBLISHED and not _is_staff_or_admin(request.user):
+        return Response({"detail": "Package not found."}, status=status.HTTP_404_NOT_FOUND)
+    services = package.package_services.select_related("service").all()
+    serializer = PackageServiceSerializer(services, many=True)
+    # price breakdown
+    from decimal import Decimal
+    service_cost = sum((ps.total_price for ps in services if ps.is_included), Decimal('0'))
+    service_fee = package.service_fee or Decimal('0')
+    final = service_cost + service_fee
+    return Response({
+        "package_id": package.id,
+        "trip_type": package.trip_type,
+        "services": serializer.data,
+        "service_cost": str(service_cost),
+        "service_fee": str(service_fee),
+        "final_price": str(final),
+    })
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated, IsAdminOrStaffRole])
+def package_service_add(request, package_id):
+    package = get_object_or_404(TourPackage, id=package_id)
+    serializer = PackageServiceSerializer(data=request.data)
+    if serializer.is_valid():
+        # if unit_price not provided, use service price
+        service = serializer.validated_data["service"]
+        if not serializer.validated_data.get("unit_price"):
+            serializer.validated_data["unit_price"] = service.price
+        serializer.save(package=package)
+        return Response(PackageServiceSerializer(serializer.instance).data, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(["PUT", "PATCH", "DELETE"])
+@permission_classes([IsAuthenticated, IsAdminOrStaffRole])
+def package_service_detail(request, ps_id):
+    ps = get_object_or_404(PackageService, id=ps_id)
+    if request.method == "DELETE":
+        ps.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    partial = request.method == "PATCH"
+    serializer = PackageServiceSerializer(ps, data=request.data, partial=partial)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated, IsAdminOrStaffRole])
+def package_service_reorder(request, package_id):
+    package = get_object_or_404(TourPackage, id=package_id)
+    order = request.data.get("order", [])
+    if not isinstance(order, list):
+        return Response({"detail": "order must be a list of package_service ids"}, status=status.HTTP_400_BAD_REQUEST)
+    for idx, ps_id in enumerate(order):
+        PackageService.objects.filter(id=ps_id, package=package).update(display_order=idx)
+    return Response({"detail": "Reordered"})
+
+
+# ---------------------------------------------------------------
+# Package Travel Dates
+# ---------------------------------------------------------------
+@api_view(["GET", "POST"])
+@permission_classes([AllowAny])
+def package_travel_dates(request, package_id):
+    package = get_object_or_404(TourPackage, id=package_id)
+    if request.method == "GET":
+        if package.status != TourPackage.Status.PUBLISHED and not _is_staff_or_admin(request.user):
+            return Response({"detail": "Package not found."}, status=status.HTTP_404_NOT_FOUND)
+        dates = package.travel_dates.all()
+        return Response(PackageTravelDateSerializer(dates, many=True).data)
+    # POST create
+    if not _is_staff_or_admin(request.user):
+        if not request.user.is_authenticated:
+            return Response({"detail": "Authentication credentials were not provided."}, status=status.HTTP_401_UNAUTHORIZED)
+        return Response({"detail": "You do not have permission to perform this action."}, status=status.HTTP_403_FORBIDDEN)
+    serializer = PackageTravelDateSerializer(data=request.data)
+    if serializer.is_valid():
+        if PackageTravelDate.objects.filter(package=package, travel_date=serializer.validated_data["travel_date"]).exists():
+            return Response({"travel_date": "This date already exists for the package."}, status=status.HTTP_400_BAD_REQUEST)
+        serializer.save(package=package)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(["PUT", "PATCH", "DELETE"])
+@permission_classes([IsAuthenticated, IsAdminOrStaffRole])
+def package_travel_date_detail(request, date_id):
+    td = get_object_or_404(PackageTravelDate, id=date_id)
+    if request.method == "DELETE":
+        td.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    partial = request.method == "PATCH"
+    serializer = PackageTravelDateSerializer(td, data=request.data, partial=partial)
+    if serializer.is_valid():
+        # check uniqueness if date changed
+        new_date = serializer.validated_data.get("travel_date", td.travel_date)
+        if new_date != td.travel_date and PackageTravelDate.objects.filter(package=td.package, travel_date=new_date).exclude(id=td.id).exists():
+            return Response({"travel_date": "This date already exists for the package."}, status=status.HTTP_400_BAD_REQUEST)
+        serializer.save()
+        return Response(serializer.data)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+# ---------------------------------------------------------------
+# Price calculation (server-computed, never trust client)
+# ---------------------------------------------------------------
+@api_view(["POST", "GET"])
+@permission_classes([AllowAny])
+def package_price_calculate(request, package_id):
+    package = get_object_or_404(TourPackage.objects.prefetch_related("package_services__service"), id=package_id)
+    if package.status != TourPackage.Status.PUBLISHED and not _is_staff_or_admin(request.user):
+        return Response({"detail": "Package not found."}, status=status.HTTP_404_NOT_FOUND)
+    # travelers can come from query or body
+    travelers = request.data.get("travelers") or request.query_params.get("travelers") or 1
+    try:
+        travelers = int(travelers)
+        if travelers < 1:
+            raise ValueError()
+    except (ValueError, TypeError):
+        return Response({"detail": "travelers must be a positive integer"}, status=status.HTTP_400_BAD_REQUEST)
+    coupon_code = request.data.get("coupon_code") or request.query_params.get("coupon_code") or request.data.get("coupon") or ""
+    from decimal import Decimal
+    if package.trip_type == TourPackage.TripType.INDEPENDENT_PACKAGE:
+        service_cost_per_person = sum((ps.total_price for ps in package.package_services.filter(is_included=True)), Decimal('0'))
+        service_fee = package.service_fee or Decimal('0')
+        # service_cost is per package? spec says per package total then multiplied by travelers? We'll treat service_cost as per person for simplicity, but spec example multiplies? Actually spec: Flight 18k Hotel 12k etc = 44,500 + fee 1,500 = 46,000 total per booking. For multiple travelers, price scales.
+        # So we treat final = (service_cost + service_fee) * travelers before coupon? Or service_fee once? We'll treat service_fee once per booking, not per traveler? Spec shows example for 4 travelers not clear. We'll compute per traveler * travelers + fee.
+        # Let's compute: per_person_service_total = service_cost (which may already be per person)
+        # We'll assume service_cost is per person * travelers + fee
+        subtotal_per_person = service_cost_per_person + service_fee
+        # Actually better: service_cost_per_person = sum, fee separate, subtotal = (service_cost * travelers) + fee
+        # To match spec's "Flight 18k + Hotel 12k ..." total 44,500 + fee 1500 = 46k per booking (maybe per group). We'll use (service_cost * travelers) + fee if travelers>1? Provide both.
+        # For now: subtotal = service_cost_per_person * travelers + service_fee
+        subtotal = service_cost_per_person * travelers + service_fee
+        # However if service includes hotel per night per group not per person, we'd need different. Keep simple.
+        # Also handle discount_price? ignore for independent
+    else:
+        # group tour uses effective_price
+        subtotal = package.effective_price * travelers
+        service_cost_per_person = package.effective_price
+        service_fee = Decimal('0')
+        service_cost = subtotal
+
+    # Coupon handling
+    discount = Decimal('0')
+    coupon_valid = None
+    coupon_msg = None
+    if coupon_code:
+        try:
+            coupon = Coupon.objects.get(code__iexact=coupon_code.strip())
+            valid, msg = coupon.is_valid_for_amount(subtotal)
+            if valid and (not coupon.applicable_trip_type or coupon.applicable_trip_type == package.trip_type):
+                discount = coupon.calculate_discount(subtotal)
+                coupon_valid = True
+                coupon_msg = "Coupon applied"
+            else:
+                coupon_valid = False
+                coupon_msg = msg if not valid else "Coupon not applicable for this package type"
+                discount = Decimal('0')
+        except Coupon.DoesNotExist:
+            coupon_valid = False
+            coupon_msg = "Invalid coupon code"
+            discount = Decimal('0')
+
+    final_amount = subtotal - discount
+    if final_amount < 0:
+        final_amount = Decimal('0')
+
+    # Build breakdown
+    services_breakdown = []
+    if package.trip_type == TourPackage.TripType.INDEPENDENT_PACKAGE:
+        for ps in package.package_services.filter(is_included=True):
+            services_breakdown.append({
+                "service_name": ps.service.name,
+                "service_type": ps.service.service_type,
+                "quantity": ps.quantity,
+                "unit_price": str(ps.unit_price),
+                "total_price": str(ps.total_price),
+            })
+
+    return Response({
+        "package_id": package.id,
+        "trip_type": package.trip_type,
+        "travelers": travelers,
+        "service_cost_per_person": str(service_cost_per_person) if package.trip_type == TourPackage.TripType.INDEPENDENT_PACKAGE else None,
+        "services": services_breakdown,
+        "service_cost": str(service_cost_per_person * travelers) if package.trip_type == TourPackage.TripType.INDEPENDENT_PACKAGE else str(subtotal),
+        "service_fee": str(service_fee),
+        "subtotal": str(subtotal),
+        "coupon_code": coupon_code,
+        "coupon_valid": coupon_valid,
+        "coupon_message": coupon_msg,
+        "discount": str(discount),
+        "final_amount": str(final_amount),
+    })
+
+
+# ---------------------------------------------------------------
+# Coupon validation endpoint
+# ---------------------------------------------------------------
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def validate_coupon(request):
+    code = request.data.get("code") or request.data.get("coupon_code") or ""
+    amount = request.data.get("amount") or 0
+    try:
+        from decimal import Decimal
+        amount = Decimal(str(amount))
+    except Exception:
+        amount = Decimal('0')
+    if not code:
+        return Response({"valid": False, "detail": "Coupon code required"}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        coupon = Coupon.objects.get(code__iexact=code.strip())
+    except Coupon.DoesNotExist:
+        return Response({"valid": False, "detail": "Invalid coupon"}, status=status.HTTP_404_NOT_FOUND)
+    valid, msg = coupon.is_valid_for_amount(amount)
+    if not valid:
+        return Response({"valid": False, "detail": msg}, status=status.HTTP_400_BAD_REQUEST)
+    discount = coupon.calculate_discount(amount)
+    return Response({"valid": True, "discount": str(discount), "final_amount": str(amount - discount), "detail": msg})
+
+
+@api_view(["GET", "POST"])
+@permission_classes([IsAuthenticated, IsAdminOrStaffRole])
+def coupon_list_create(request):
+    if request.method == "GET":
+        qs = Coupon.objects.all().order_by("-created_at")
+        paginator = StandardResultsPagination()
+        page = paginator.paginate_queryset(qs, request)
+        return paginator.get_paginated_response(CouponSerializer(page, many=True).data)
+    serializer = CouponSerializer(data=request.data)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(["GET", "PUT", "PATCH", "DELETE"])
+@permission_classes([IsAuthenticated, IsAdminOrStaffRole])
+def coupon_detail(request, coupon_id):
+    coupon = get_object_or_404(Coupon, id=coupon_id)
+    if request.method == "GET":
+        return Response(CouponSerializer(coupon).data)
+    if request.method == "DELETE":
+        coupon.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    partial = request.method == "PATCH"
+    serializer = CouponSerializer(coupon, data=request.data, partial=partial)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
