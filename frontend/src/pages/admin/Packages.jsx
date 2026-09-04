@@ -5,6 +5,7 @@ import EmptyState from "../../components/EmptyState";
 import packageApi from "../../api/packageApi";
 import destinationApi from "../../api/destinationApi";
 import serviceApi from "../../api/serviceApi";
+import pickupPointApi from "../../api/pickupPointApi";
 import "./AdminTable.css";
 import "./AdminForm.css";
 
@@ -341,6 +342,8 @@ export default function AdminPackages() {
   const [travelDates, setTravelDates] = useState([]);
   const [newTravelDate, setNewTravelDate] = useState({ travel_date: "", status: "available", available_slots: "" });
   const [newService, setNewService] = useState({ service: "", quantity: 1, unit_price: "", is_included: true, is_user_selectable: false, option_group: "", is_default_selected: false });
+  const [allPickupPoints, setAllPickupPoints] = useState([]);
+  const [selectedPickupIds, setSelectedPickupIds] = useState([]);
 
   const load = () => {
     setIsLoading(true);
@@ -356,6 +359,7 @@ export default function AdminPackages() {
   useEffect(() => {
     destinationApi.list({ page_size: 100 }).then((data) => setDestinations(data.results));
     serviceApi.list({ page_size: 100 }).then((data) => setAllServices(data.results || data)).catch(() => {});
+    pickupPointApi.list({ page_size: 100 }).then((data) => setAllPickupPoints(data.results || data)).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -405,6 +409,7 @@ export default function AdminPackages() {
     setImages([]);
     setPkgServices([]);
     setTravelDates([]);
+    setSelectedPickupIds([]);
     setFeaturedFile(null);
     setFeaturedPreview("");
     setFeaturedUploadError("");
@@ -447,6 +452,7 @@ export default function AdminPackages() {
     setImages(full.images);
     setPkgServices(full.package_services || []);
     setTravelDates(full.travel_dates || []);
+    setSelectedPickupIds((full.pickup_points || []).map((p) => p.id));
     setFeaturedFile(null);
     setFeaturedPreview(full.featured_image || "");
     setFeaturedUploadError("");
@@ -470,6 +476,7 @@ export default function AdminPackages() {
           .filter((a) => a.title.trim())
           .map((a) => ({ ...a, day_number: Number(a.day_number) || 1 })),
         faqs: faqs.filter((f) => f.question.trim()),
+        pickup_points: selectedPickupIds,
       };
       let savedId = editingId;
       let savedPkg = null;
@@ -591,6 +598,29 @@ export default function AdminPackages() {
             <label className="form-label">Pickup Location</label>
             <input name="pickup_location" className="form-input" placeholder="e.g. Leh Airport" value={formData.pickup_location} onChange={handleChange} />
           </div>
+
+          {formData.trip_type === "group_tour" && (
+            <div className="form-group" style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 12, background: "#f8fafc" }}>
+              <label className="form-label">Pickup Points — Big cities (suggested via user location)</label>
+              <p className="admin-form__note">Select one or more pickup hubs for this group tour. Admin manages pickup points via “Pickup Points” page. User at booking will see “Use my location” to suggest nearest.</p>
+              {allPickupPoints.length === 0 ? (
+                <p style={{ fontSize: "0.85rem", color: "#64748b" }}>No pickup points yet. Create in Pickup Points page first.</p>
+              ) : (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(200px,1fr))", gap: 8, maxHeight: 180, overflowY: "auto", border: "1px solid #e2e8f0", borderRadius: 8, padding: 8, background: "#fff" }}>
+                  {allPickupPoints.filter((p) => p.is_active).map((p) => (
+                    <label key={p.id} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "0.85rem", cursor: "pointer" }}>
+                      <input type="checkbox" checked={selectedPickupIds.includes(p.id)} onChange={(e) => {
+                        if (e.target.checked) setSelectedPickupIds([...selectedPickupIds, p.id]);
+                        else setSelectedPickupIds(selectedPickupIds.filter((x) => x !== p.id));
+                      }} />
+                      <span>{p.city} — {p.name}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+              {selectedPickupIds.length > 0 && <p style={{ fontSize: "0.78rem", color: "#0f7a6c", marginTop: 6 }}>{selectedPickupIds.length} pickup point(s) selected.</p>}
+            </div>
+          )}
 
           <div className="form-row">
             <div className="form-group">

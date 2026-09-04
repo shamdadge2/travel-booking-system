@@ -17,6 +17,7 @@ export default function MyBookings() {
   const [bookings, setBookings] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [deleteError, setDeleteError] = useState("");
 
   useEffect(() => {
     bookingApi
@@ -25,6 +26,19 @@ export default function MyBookings() {
       .catch(() => setError("Couldn't load your bookings. Please try again."))
       .finally(() => setIsLoading(false));
   }, []);
+
+  const handleDelete = async (e, bookingId) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!window.confirm("Delete this cancelled booking? This cannot be undone.")) return;
+    setDeleteError("");
+    try {
+      await bookingApi.remove(bookingId);
+      setBookings(bookings.filter((b) => b.id !== bookingId));
+    } catch (err) {
+      setDeleteError(err.response?.data?.detail || "Couldn't delete booking.");
+    }
+  };
 
   return (
     <div className="myb-page">
@@ -51,6 +65,7 @@ export default function MyBookings() {
       {/* Content */}
       <section className="myb-content">
         <div className="container">
+          {deleteError && <p className="form-error" style={{ marginBottom: 12 }}>{deleteError}</p>}
           {isLoading ? (
             <Loader label="Loading your bookings..." />
           ) : error ? (
@@ -84,6 +99,9 @@ export default function MyBookings() {
                           {isIndependent ? "Independent" : "Group Tour"}
                         </span>
                         <span className={`badge ${statusBadgeClass(booking.booking_status)} myb-card__badge`} style={{ marginLeft: 6 }}>{booking.booking_status.replace(/_/g, " ")}</span>
+                        {booking.booking_status === "cancelled" && (
+                          <button onClick={(e) => handleDelete(e, booking.id)} className="btn btn-outline" style={{ marginLeft: 8, fontSize: "0.7rem", padding: "2px 8px", color: "#dc2626", borderColor: "#fecaca" }}>Delete</button>
+                        )}
                       </div>
                       <h3 className="myb-card__title">{booking.package?.title || "Package"}</h3>
                       <p className="myb-card__meta">

@@ -7,6 +7,7 @@ const ADMIN_LINKS = [
   { to: "/admin/users", label: "Users" },
   { to: "/admin/destinations", label: "Destinations" },
   { to: "/admin/packages", label: "Packages" },
+  { to: "/admin/pickup-points", label: "Pickup Points" },
   { to: "/admin/services", label: "Services" },
   { to: "/admin/coupons", label: "Coupons" },
   { to: "/admin/itineraries", label: "Itineraries" },

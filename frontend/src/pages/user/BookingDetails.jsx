@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { formatCurrency, formatDate } from "../../utils/formatters";
 import Loader from "../../components/Loader";
 import EmptyState from "../../components/EmptyState";
@@ -8,11 +8,13 @@ import "./BookingDetails.css";
 
 export default function BookingDetails() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [booking, setBooking] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [cancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState("");
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     bookingApi
@@ -35,6 +37,20 @@ export default function BookingDetails() {
       setCancelError(err.response?.data?.detail || "Couldn't cancel this booking.");
     } finally {
       setCancelling(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!window.confirm("Delete this cancelled booking? This cannot be undone.")) return;
+    setCancelError("");
+    setDeleting(true);
+    try {
+      await bookingApi.remove(id);
+      navigate("/my-bookings");
+    } catch (err) {
+      setCancelError(err.response?.data?.detail || "Couldn't delete booking. Only cancelled bookings can be deleted.");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -89,6 +105,17 @@ export default function BookingDetails() {
                 <dt>Type</dt><dd>{isIndependent ? "Independent Package" : "Group Tour"}</dd>
                 <dt>Total Amount</dt><dd>{formatCurrency(booking.total_amount)}</dd>
                 {isIndependent && booking.service_total && <><dt>Service Total</dt><dd>{formatCurrency(booking.service_total)}</dd><dt>Service Fee</dt><dd>{formatCurrency(booking.service_fee)}</dd><dt>Discount</dt><dd>{formatCurrency(booking.discount_amount)} {booking.coupon_code && `(${booking.coupon_code})`}</dd></>}
+                {!isIndependent && booking.pickup_point_detail && (
+                  <>
+                    <dt>Pickup Point</dt>
+                    <dd>{booking.pickup_point_detail.city ? `${booking.pickup_point_detail.city} — ${booking.pickup_point_detail.name}` : booking.pickup_point_detail.name} {booking.pickup_point_detail.address ? `· ${booking.pickup_point_detail.address}` : ""}</dd>
+                  </>
+                )}
+                {!isIndependent && !booking.pickup_point_detail && booking.package?.pickup_location && (
+                  <>
+                    <dt>Pickup</dt><dd>{booking.package.pickup_location}</dd>
+                  </>
+                )}
                 <dt>Special Requests</dt><dd>{booking.special_requests || "—"}</dd>
               </dl>
 
@@ -163,7 +190,13 @@ export default function BookingDetails() {
                   </button>
                 )}
 
-                {booking.payment_status !== "paid" && (
+                {booking.booking_status === "cancelled" && (
+                  <button className="bd-btn bd-btn--danger" onClick={handleDelete} disabled={deleting} style={{ background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" }}>
+                    {deleting ? "Deleting..." : "Delete Cancelled Booking"}
+                  </button>
+                )}
+
+                {booking.payment_status !== "paid" && booking.booking_status !== "cancelled" && (
                   <Link to={`/payment/${id}`} className="bd-btn bd-btn--primary">
                     Pay Now
                   </Link>

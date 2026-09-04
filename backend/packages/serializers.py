@@ -15,6 +15,7 @@ from .models import (
     PackageInclusion,
     PackageService,
     PackageTravelDate,
+    PickupPoint,
     TourPackage,
     TravelService,
 )
@@ -121,6 +122,34 @@ class CancellationPolicySerializer(serializers.ModelSerializer):
         model = CancellationPolicy
         fields = ["id", "package", "name", "description", "is_active", "rules"]
 
+
+class PickupPointSerializer(serializers.ModelSerializer):
+    distance_km = serializers.SerializerMethodField(read_only=True)
+
+    class Meta:
+        model = PickupPoint
+        fields = ["id", "city", "name", "address", "latitude", "longitude", "is_active", "created_at", "updated_at", "distance_km"]
+
+    def get_distance_km(self, obj):
+        # If context has request lat/lng, compute distance
+        lat = self.context.get("user_lat")
+        lng = self.context.get("user_lng")
+        if lat is not None and lng is not None:
+            d = obj.distance_to(lat, lng)
+            return round(d, 2) if d is not None else None
+        # Also check serializer context request query
+        request = self.context.get("request")
+        if request:
+            try:
+                lat = request.query_params.get("lat") or request.data.get("lat")
+                lng = request.query_params.get("lng") or request.data.get("lng")
+                if lat and lng:
+                    d = obj.distance_to(lat, lng)
+                    return round(d, 2) if d is not None else None
+            except Exception:
+                pass
+        return None
+
     def create(self, validated_data):
         rules_data = validated_data.pop("rules", [])
         policy = CancellationPolicy.objects.create(**validated_data)
@@ -208,6 +237,8 @@ class TourPackageListSerializer(serializers.ModelSerializer):
         except Exception:
             return None
 
+    pickup_points = PickupPointSerializer(many=True, read_only=True)
+
     class Meta:
         model = TourPackage
         fields = [
@@ -236,6 +267,7 @@ class TourPackageListSerializer(serializers.ModelSerializer):
             "start_date",
             "end_date",
             "pickup_location",
+            "pickup_points",
             "featured_image",
             "status",
             "is_featured",
@@ -374,6 +406,10 @@ class TourPackageWriteSerializer(serializers.ModelSerializer):
     activities = PackageActivitySerializer(many=True, required=False)
     faqs = PackageFAQSerializer(many=True, required=False)
 
+    pickup_points = serializers.PrimaryKeyRelatedField(
+        queryset=PickupPoint.objects.filter(is_active=True), many=True, required=False
+    )
+
     class Meta:
         model = TourPackage
         fields = [
@@ -394,6 +430,7 @@ class TourPackageWriteSerializer(serializers.ModelSerializer):
             "start_date",
             "end_date",
             "pickup_location",
+            "pickup_points",
             "featured_image",
             "status",
             "is_featured",
@@ -446,11 +483,14 @@ class TourPackageWriteSerializer(serializers.ModelSerializer):
         exclusions_data = validated_data.pop("exclusions", [])
         activities_data = validated_data.pop("activities", [])
         faqs_data = validated_data.pop("faqs", [])
+        pickup_points_data = validated_data.pop("pickup_points", [])
 
         request = self.context.get("request")
         created_by = request.user if request and request.user.is_authenticated else None
 
         package = TourPackage.objects.create(created_by=created_by, **validated_data)
+        if pickup_points_data:
+            package.pickup_points.set(pickup_points_data)
 
         PackageInclusion.objects.bulk_create(
             [PackageInclusion(package=package, **item) for item in inclusions_data]
@@ -472,10 +512,13 @@ class TourPackageWriteSerializer(serializers.ModelSerializer):
         exclusions_data = validated_data.pop("exclusions", None)
         activities_data = validated_data.pop("activities", None)
         faqs_data = validated_data.pop("faqs", None)
+        pickup_points_data = validated_data.pop("pickup_points", None)
 
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
+        if pickup_points_data is not None:
+            instance.pickup_points.set(pickup_points_data)
 
         # Only replace a child collection if the client actually sent
         # that key — omitting it means "leave these alone", sending an

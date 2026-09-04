@@ -41,7 +41,7 @@ class BookingAdmin(admin.ModelAdmin):
 
     fieldsets = (
         (None, {"fields": ("booking_reference", "user", "package", "trip_type")}),
-        ("Trip", {"fields": ("travel_date", "number_of_travelers", "special_requests")}),
+        ("Trip", {"fields": ("travel_date", "number_of_travelers", "special_requests", "pickup_point", "pickup_point_name")}),
         ("Financial", {"fields": ("total_amount", "service_total", "service_fee", "discount_amount", "coupon_code")}),
         ("Status", {"fields": ("booking_status", "payment_status")}),
         ("Timestamps", {"fields": ("created_at", "updated_at")}),

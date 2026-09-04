@@ -36,6 +36,9 @@ const packageApi = {
     api.post(`/packages/${id}/images/add/`, formData).then((res) => res.data),
   removeImage: (imageId) =>
     api.delete(`/packages/images/${imageId}/delete/`).then((res) => res.data),
+
+  pickupPoints: (id, params) => api.get(`/packages/${id}/pickup-points/`, { params }).then((res) => res.data),
+  assignPickupPoints: (id, pickupIds) => api.post(`/packages/${id}/pickup-points/assign/`, { pickup_points: pickupIds }).then((res) => res.data),
 };
 
 export default packageApi;

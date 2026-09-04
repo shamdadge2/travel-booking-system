@@ -21,6 +21,13 @@ urlpatterns = [
 
     path("images/<int:image_id>/delete/", views.delete_package_image, name="package-image-delete"),
 
+    # Pickup points (big cities as hubs for group tours)
+    path("pickup-points/", views.pickup_point_list_create, name="pickup-point-list-create"),
+    path("pickup-points/<int:point_id>/", views.pickup_point_detail, name="pickup-point-detail"),
+    path("pickup-points/nearest/", views.nearest_pickup_point, name="pickup-point-nearest"),
+    path("<int:package_id>/pickup-points/", views.package_pickup_points, name="package-pickup-points"),
+    path("<int:package_id>/pickup-points/assign/", views.package_pickup_point_assign, name="package-pickup-points-assign"),
+
     path("<int:package_id>/", views.get_package, name="package-detail"),
     path("<int:package_id>/update/", views.update_package, name="package-update"),
     path("<int:package_id>/delete/", views.delete_package, name="package-delete"),

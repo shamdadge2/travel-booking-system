@@ -68,7 +68,14 @@ export default function MyReviews() {
   useEffect(load, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const reviewedBookingIds = new Set(reviews.map((r) => r.booking));
-  const reviewableBookings = bookings.filter((b) => !reviewedBookingIds.has(b.id));
+  // Only allow review when trip is completed (travel_date passed + booking completed/confirmed)
+  const isCompleted = (b) => {
+    const travelPassed = new Date(b.travel_date) <= new Date(new Date().setHours(0,0,0,0));
+    const statusOk = ["completed", "confirmed", "fully_confirmed"].includes(b.booking_status);
+    return travelPassed && statusOk && b.payment_status === "paid";
+  };
+  const reviewableBookings = bookings.filter((b) => !reviewedBookingIds.has(b.id) && isCompleted(b));
+  const notYetEligible = bookings.filter((b) => !reviewedBookingIds.has(b.id) && !isCompleted(b));
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -111,11 +118,12 @@ export default function MyReviews() {
 
       {reviewableBookings.length > 0 && (
         <div className="card my-reviews__form">
-          <h3>Write a Review</h3>
+          <h3>Write a Review — Only after your trip is completed</h3>
+          <p style={{ fontSize: "0.85rem", color: "#64748b", margin: "0 0 12px" }}>You can rate and review a package only after you complete your trip (travel date passed & booking completed). Group & Independent both require completed trip.</p>
           {formError && <p className="form-error">{formError}</p>}
           <form onSubmit={handleSubmit}>
             <div className="form-group">
-              <label className="form-label">Booking</label>
+              <label className="form-label">Booking (completed trips only)</label>
               <select
                 className="form-select"
                 value={selectedBookingId}
@@ -124,7 +132,7 @@ export default function MyReviews() {
                 <option value="">Select a booking to review</option>
                 {reviewableBookings.map((b) => (
                   <option key={b.id} value={b.id}>
-                    {b.package.title} ({b.booking_reference})
+                    {b.package.title} ({b.booking_reference}) · {b.travel_date} · {b.booking_status}
                   </option>
                 ))}
               </select>
@@ -148,6 +156,17 @@ export default function MyReviews() {
               {submitting ? "Submitting..." : "Submit Review"}
             </button>
           </form>
+        </div>
+      )}
+      {reviewableBookings.length === 0 && notYetEligible.length > 0 && (
+        <div className="card" style={{ padding: 16, background: "#f8fafc", border: "1px solid #e2e8f0", marginBottom: 16 }}>
+          <h4 style={{ margin: "0 0 8px" }}>Trips not yet eligible for review</h4>
+          <p style={{ fontSize: "0.85rem", color: "#64748b", margin: "0 0 8px" }}>You can review only after trip completion. {notYetEligible.length} booking(s) will become reviewable once travel date passes and booking is marked completed.</p>
+          <ul style={{ fontSize: "0.85rem", color: "#475569", margin: 0, paddingLeft: 18 }}>
+            {notYetEligible.map((b) => (
+              <li key={b.id}>{b.package.title} ({b.booking_reference}) — {b.travel_date} · Status: {b.booking_status} {new Date(b.travel_date) > new Date() ? "· Upcoming" : ""}</li>
+            ))}
+          </ul>
         </div>
       )}
 

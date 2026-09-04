@@ -2,7 +2,7 @@ from datetime import date
 
 from rest_framework import serializers
 
-from packages.models import TourPackage
+from packages.models import PickupPoint, TourPackage
 
 from .models import Booking, BookingService, Traveler
 
@@ -81,6 +81,14 @@ class BookingListSerializer(serializers.ModelSerializer):
     package = BookingPackageSummarySerializer(read_only=True)
     user_username = serializers.CharField(source="user.username", read_only=True)
     trip_type = serializers.CharField(source="package.trip_type", read_only=True)
+    pickup_point_detail = serializers.SerializerMethodField()
+
+    def get_pickup_point_detail(self, obj):
+        if obj.pickup_point:
+            return {"id": obj.pickup_point.id, "city": obj.pickup_point.city, "name": obj.pickup_point.name, "address": obj.pickup_point.address}
+        if obj.pickup_point_name:
+            return {"name": obj.pickup_point_name}
+        return None
 
     class Meta:
         model = Booking
@@ -100,6 +108,9 @@ class BookingListSerializer(serializers.ModelSerializer):
             "coupon_code",
             "booking_status",
             "payment_status",
+            "pickup_point",
+            "pickup_point_name",
+            "pickup_point_detail",
             "created_at",
         ]
 
@@ -152,6 +163,7 @@ class BookingCreateSerializer(serializers.Serializer):
     travelers = TravelerInputSerializer(many=True)
     coupon_code = serializers.CharField(required=False, allow_blank=True, default="")
     selected_services = serializers.ListField(child=serializers.IntegerField(), required=False, default=list, help_text="List of PackageService ids chosen for selectable groups")
+    pickup_point = serializers.PrimaryKeyRelatedField(queryset=PickupPoint.objects.filter(is_active=True), required=False, allow_null=True, help_text="Selected pickup point for group tours")
 
     def validate_travel_date(self, value):
         if value is None:

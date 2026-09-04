@@ -14,6 +14,7 @@ from .models import (
     PackageImage,
     PackageService,
     PackageTravelDate,
+    PickupPoint,
     TourPackage,
     TravelService,
 )
@@ -22,6 +23,7 @@ from .serializers import (
     PackageImageSerializer,
     PackageServiceSerializer,
     PackageTravelDateSerializer,
+    PickupPointSerializer,
     TourPackageDetailSerializer,
     TourPackageListSerializer,
     TourPackageWriteSerializer,
@@ -125,7 +127,7 @@ def _apply_discounted_filter(request, queryset):
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def get_packages(request):
-    queryset = TourPackage.objects.select_related("destination").prefetch_related("package_services", "package_services__service").annotate(avg_rating=Avg("reviews__rating"), review_count_annotated=Count("reviews", distinct=True)).all()
+    queryset = TourPackage.objects.select_related("destination").prefetch_related("package_services", "package_services__service", "pickup_points").annotate(avg_rating=Avg("reviews__rating"), review_count_annotated=Count("reviews", distinct=True)).all()
     queryset = _apply_common_filters(request, queryset)
     queryset = _apply_discounted_filter(request, queryset)
 
@@ -141,7 +143,7 @@ def get_packages(request):
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def search_packages(request):
-    queryset = TourPackage.objects.select_related("destination").prefetch_related("package_services").annotate(avg_rating=Avg("reviews__rating"), review_count_annotated=Count("reviews", distinct=True)).all()
+    queryset = TourPackage.objects.select_related("destination").prefetch_related("package_services", "pickup_points").annotate(avg_rating=Avg("reviews__rating"), review_count_annotated=Count("reviews", distinct=True)).all()
     queryset = _apply_common_filters(request, queryset)
     queryset = _apply_discounted_filter(request, queryset)
 
@@ -201,7 +203,7 @@ def get_package(request, package_id):
         )
         .prefetch_related(
             "images", "inclusions", "exclusions", "activities", "faqs",
-            "package_services", "package_services__service", "travel_dates"
+            "package_services", "package_services__service", "travel_dates", "pickup_points"
         ),
         id=package_id,
     )
@@ -777,3 +779,180 @@ def coupon_detail(request, coupon_id):
         serializer.save()
         return Response(serializer.data)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+# ---------------------------------------------------------------
+# Pickup Points — admin can add big cities as hubs, user gets nearest suggestion
+# ---------------------------------------------------------------
+@api_view(["GET", "POST"])
+@permission_classes([AllowAny])
+def pickup_point_list_create(request):
+    if request.method == "GET":
+        qs = PickupPoint.objects.all().order_by("city", "name")
+        is_active = request.query_params.get("is_active")
+        if is_active is not None:
+            qs = qs.filter(is_active=is_active.lower() in ("1", "true", "yes"))
+        search = request.query_params.get("search")
+        if search:
+            qs = qs.filter(Q(city__icontains=search) | Q(name__icontains=search) | Q(address__icontains=search))
+        # optional nearest sorting if lat/lng provided
+        lat = request.query_params.get("lat")
+        lng = request.query_params.get("lng")
+        if lat and lng:
+            try:
+                lat_f = float(lat)
+                lng_f = float(lng)
+                # sort by distance where coords exist
+                points = list(qs)
+                for p in points:
+                    d = p.distance_to(lat_f, lng_f)
+                    p._distance = d if d is not None else float('inf')
+                points.sort(key=lambda x: x._distance)
+                paginator = StandardResultsPagination()
+                page = paginator.paginate_queryset(points, request)
+                # must serialize manually with distance context
+                ser = PickupPointSerializer(page, many=True, context={"request": request, "user_lat": lat_f, "user_lng": lng_f})
+                return paginator.get_paginated_response(ser.data)
+            except Exception:
+                pass
+        paginator = StandardResultsPagination()
+        page = paginator.paginate_queryset(qs, request)
+        return paginator.get_paginated_response(PickupPointSerializer(page, many=True, context={"request": request}).data)
+
+    # POST — admin only
+    if not _is_staff_or_admin(request.user):
+        if not request.user.is_authenticated:
+            return Response({"detail": "Authentication credentials were not provided."}, status=status.HTTP_401_UNAUTHORIZED)
+        return Response({"detail": "You do not have permission to perform this action."}, status=status.HTTP_403_FORBIDDEN)
+    serializer = PickupPointSerializer(data=request.data)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(["GET", "PUT", "PATCH", "DELETE"])
+@permission_classes([AllowAny])
+def pickup_point_detail(request, point_id):
+    point = get_object_or_404(PickupPoint, id=point_id)
+    if request.method == "GET":
+        lat = request.query_params.get("lat")
+        if not lat and hasattr(request, 'data') and request.data:
+            lat = request.data.get("lat")
+        lng = request.query_params.get("lng")
+        if not lng and hasattr(request, 'data') and request.data:
+            lng = request.data.get("lng")
+        ctx = {"request": request}
+        if lat and lng:
+            try:
+                ctx["user_lat"] = float(lat)
+                ctx["user_lng"] = float(lng)
+            except Exception:
+                pass
+        return Response(PickupPointSerializer(point, context=ctx).data)
+    if not _is_staff_or_admin(request.user):
+        if not request.user.is_authenticated:
+            return Response({"detail": "Authentication credentials were not provided."}, status=status.HTTP_401_UNAUTHORIZED)
+        return Response({"detail": "You do not have permission to perform this action."}, status=status.HTTP_403_FORBIDDEN)
+    if request.method == "DELETE":
+        if point.packages.exists():
+            return Response({"detail": "Cannot delete pickup point — it is assigned to one or more packages. Unassign first or deactivate."}, status=status.HTTP_409_CONFLICT)
+        point.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    partial = request.method == "PATCH"
+    serializer = PickupPointSerializer(point, data=request.data, partial=partial)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def package_pickup_points(request, package_id):
+    package = get_object_or_404(TourPackage.objects.prefetch_related("pickup_points"), id=package_id)
+    if package.status != TourPackage.Status.PUBLISHED and not _is_staff_or_admin(request.user):
+        return Response({"detail": "Package not found."}, status=status.HTTP_404_NOT_FOUND)
+    points = package.pickup_points.filter(is_active=True).order_by("city", "name")
+    # if lat/lng provided, compute distance and sort nearest first, include distance_km
+    lat = request.query_params.get("lat")
+    lng = request.query_params.get("lng")
+    ctx = {"request": request}
+    if lat and lng:
+        try:
+            lat_f = float(lat)
+            lng_f = float(lng)
+            ctx["user_lat"] = lat_f
+            ctx["user_lng"] = lng_f
+            # sort
+            points_list = list(points)
+            for p in points_list:
+                d = p.distance_to(lat_f, lng_f)
+                p._distance = d if d is not None else float('inf')
+            points_list.sort(key=lambda x: getattr(x, "_distance", float('inf')))
+            points = points_list
+        except Exception:
+            pass
+    serializer = PickupPointSerializer(points, many=True, context=ctx)
+    # optionally also return nearest
+    data = serializer.data
+    nearest = None
+    if lat and lng and data:
+        # data already sorted by distance, first is nearest if distance not None
+        nearest = data[0] if data[0].get("distance_km") is not None else None
+    return Response({"package_id": package.id, "pickup_points": data, "nearest": nearest, "count": len(data)})
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated, IsAdminOrStaffRole])
+def package_pickup_point_assign(request, package_id):
+    package = get_object_or_404(TourPackage, id=package_id)
+    pickup_ids = request.data.get("pickup_points") or request.data.get("pickup_point_ids") or []
+    if isinstance(pickup_ids, int):
+        pickup_ids = [pickup_ids]
+    if not isinstance(pickup_ids, list):
+        return Response({"detail": "pickup_points must be a list of ids"}, status=status.HTTP_400_BAD_REQUEST)
+    # validate ids
+    valid = PickupPoint.objects.filter(id__in=pickup_ids, is_active=True)
+    package.pickup_points.set(valid)
+    return Response(PickupPointSerializer(package.pickup_points.all(), many=True).data)
+
+
+@api_view(["GET", "POST"])
+@permission_classes([AllowAny])
+def nearest_pickup_point(request):
+    # Global nearest across all active points (fallback if package has none)
+    lat = request.query_params.get("lat")
+    if not lat and hasattr(request, 'data') and request.data:
+        lat = request.data.get("lat")
+    lng = request.query_params.get("lng")
+    if not lng and hasattr(request, 'data') and request.data:
+        lng = request.data.get("lng")
+    if not lat or not lng:
+        return Response({"detail": "lat and lng required"}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        lat_f = float(lat)
+        lng_f = float(lng)
+    except ValueError:
+        return Response({"detail": "lat/lng must be numbers"}, status=status.HTTP_400_BAD_REQUEST)
+    package_id = request.query_params.get("package_id")
+    if not package_id and hasattr(request, 'data') and request.data:
+        package_id = request.data.get("package_id")
+    if package_id:
+        try:
+            package = TourPackage.objects.prefetch_related("pickup_points").get(id=int(package_id))
+            points = list(package.pickup_points.filter(is_active=True))
+            if points:
+                best = min(points, key=lambda p: p.distance_to(lat_f, lng_f) if p.distance_to(lat_f, lng_f) is not None else float('inf'))
+                return Response(PickupPointSerializer(best, context={"user_lat": lat_f, "user_lng": lng_f}).data)
+        except Exception:
+            pass
+    # fallback global
+    points = list(PickupPoint.objects.filter(is_active=True))
+    if not points:
+        return Response({"detail": "No pickup points configured"}, status=status.HTTP_404_NOT_FOUND)
+    # filter only those with coords
+    with_coords = [p for p in points if p.latitude is not None and p.longitude is not None]
+    search_pool = with_coords if with_coords else points
+    best = min(search_pool, key=lambda p: p.distance_to(lat_f, lng_f) if p.distance_to(lat_f, lng_f) is not None else float('inf'))
+    return Response(PickupPointSerializer(best, context={"user_lat": lat_f, "user_lng": lng_f}).data)

@@ -79,6 +79,16 @@ class Booking(models.Model):
     )
     special_requests = models.TextField(blank=True)
 
+    # Group tour pickup point selected by user (nearest suggestion)
+    pickup_point = models.ForeignKey(
+        "packages.PickupPoint",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="bookings",
+    )
+    pickup_point_name = models.CharField(max_length=255, blank=True, help_text="Snapshot of pickup point city/name at booking time")
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

@@ -1,5 +1,5 @@
 from django.conf import settings
-from django.core.validators import MinValueValidator
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils.text import slugify
 
@@ -105,6 +105,14 @@ class TourPackage(models.Model):
     )
     best_time_to_visit = models.CharField(max_length=255, blank=True, help_text="e.g. 'October to March'")
     category = models.CharField(max_length=100, blank=True, help_text="Optional category for independent packages")
+
+    # Group tour pickup points (big cities as hubs)
+    pickup_points = models.ManyToManyField(
+        "PickupPoint",
+        blank=True,
+        related_name="packages",
+        help_text="For group tours: pickup hubs where we bring travelers with us.",
+    )
 
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -555,3 +563,52 @@ class CancellationRule(models.Model):
     def __str__(self):
         max_s = f"-{self.days_before_max}" if self.days_before_max else "+"
         return f"{self.days_before_min}{max_s} days: {self.refund_percent}%"
+
+
+# ----------------------------------------------------------------
+# Pickup Points for Group Tours
+# Admin defines big cities / pickup hubs (e.g. Delhi, Mumbai, Pune)
+# Each TourPackage (especially group_tour) can have multiple pickup points.
+# User location -> nearest pickup point suggestion via haversine.
+# ----------------------------------------------------------------
+class PickupPoint(models.Model):
+    city = models.CharField(max_length=100, db_index=True, help_text="Big city name e.g. Mumbai, Delhi, Pune")
+    name = models.CharField(max_length=255, help_text="Specific pickup location e.g. 'Dadar Station', 'Leh Airport'")
+    address = models.CharField(max_length=500, blank=True)
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True, help_text="Latitude for distance calculation")
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True, help_text="Longitude for distance calculation")
+    is_active = models.BooleanField(default=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "pickup_points"
+        ordering = ["city", "name"]
+        indexes = [
+            models.Index(fields=["city"]),
+            models.Index(fields=["is_active"]),
+        ]
+        constraints = [
+            models.UniqueConstraint(fields=["city", "name"], name="unique_pickup_city_name")
+        ]
+
+    def __str__(self):
+        return f"{self.city} - {self.name}"
+
+    def distance_to(self, lat, lng):
+        """Haversine distance in km to given lat/lng. Returns None if coords missing."""
+        if self.latitude is None or self.longitude is None or lat is None or lng is None:
+            return None
+        try:
+            import math
+            lat1 = math.radians(float(self.latitude))
+            lon1 = math.radians(float(self.longitude))
+            lat2 = math.radians(float(lat))
+            lon2 = math.radians(float(lng))
+            dlat = lat2 - lat1
+            dlon = lon2 - lon1
+            a = math.sin(dlat/2)**2 + math.cos(lat1)*math.cos(lat2)*math.sin(dlon/2)**2
+            c = 2 * math.asin(math.sqrt(a))
+            return 6371 * c  # Earth radius km
+        except Exception:
+            return None

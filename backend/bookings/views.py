@@ -63,7 +63,7 @@ def _can_view_booking(user, booking):
 @permission_classes([IsAuthenticated])
 def booking_list_create(request):
     if request.method == "GET":
-        queryset = Booking.objects.select_related("user", "package", "package__destination")
+        queryset = Booking.objects.select_related("user", "package", "package__destination", "pickup_point")
 
         if is_staff_or_admin(request.user):
             user_id = request.query_params.get("user")
@@ -124,7 +124,7 @@ def booking_list_create(request):
     # clean, retryable response rather than a raw 500.
     try:
         with transaction.atomic():
-            package = TourPackage.objects.select_for_update().prefetch_related("package_services__service", "travel_dates").get(id=requested_package.id)
+            package = TourPackage.objects.select_for_update().prefetch_related("package_services__service", "travel_dates", "pickup_points").get(id=requested_package.id)
 
             if package.status != TourPackage.Status.PUBLISHED:
                 return Response(
@@ -258,6 +258,18 @@ def booking_list_create(request):
                 coupon_obj.used_count += 1
                 coupon_obj.save(update_fields=["used_count"])
 
+            # Pickup point for group tours
+            pickup_point = data.get("pickup_point")
+            pickup_point_name = ""
+            if pickup_point:
+                # validate belongs to package if package has pickup points
+                if package.pickup_points.exists() and not package.pickup_points.filter(id=pickup_point.id).exists():
+                    return Response({"detail": "Selected pickup point is not valid for this package."}, status=status.HTTP_400_BAD_REQUEST)
+                pickup_point_name = f"{pickup_point.city} - {pickup_point.name}"
+            elif not is_independent and package.pickup_points.exists():
+                # optionally auto-assign nearest? leave blank for user choice; no error
+                pass
+
             # Create booking
             service_total_snapshot = service_cost_per_person * number_of_travelers if is_independent else None
             booking = Booking.objects.create(
@@ -274,6 +286,8 @@ def booking_list_create(request):
                 trip_type=package.trip_type,
                 booking_status=Booking.BookingStatus.PENDING if not is_independent else Booking.BookingStatus.SERVICES_BEING_ARRANGED,
                 special_requests=data.get("special_requests", ""),
+                pickup_point=pickup_point if not is_independent else None,
+                pickup_point_name=pickup_point_name if not is_independent else "",
             )
 
             Traveler.objects.bulk_create(
@@ -338,7 +352,7 @@ def booking_list_create(request):
 @permission_classes([IsAuthenticated])
 def booking_detail(request, booking_id):
     booking = get_object_or_404(
-        Booking.objects.select_related("user", "package", "package__destination").prefetch_related(
+        Booking.objects.select_related("user", "package", "package__destination", "pickup_point").prefetch_related(
             "travelers", "booking_services"
         ),
         id=booking_id,
@@ -436,6 +450,27 @@ def cancel_booking(request, booking_id):
 
 
 # ---------------------------------------------------------------
+# DELETE /api/bookings/<id>/delete/  — user can delete cancelled bookings
+# ---------------------------------------------------------------
+@api_view(["DELETE"])
+@permission_classes([IsAuthenticated])
+def delete_booking(request, booking_id):
+    booking = get_object_or_404(Booking, id=booking_id)
+    if not _can_view_booking(request.user, booking):
+        return Response({"detail": "Booking not found."}, status=status.HTTP_404_NOT_FOUND)
+    # Only cancelled bookings can be removed (keeps financial history for active bookings)
+    if booking.booking_status != Booking.BookingStatus.CANCELLED:
+        return Response(
+            {"detail": "Only cancelled bookings can be deleted. Cancel the booking first."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    # Ensure cancelled booking is owned or admin
+    # _can_view already checked, but double-check owner vs admin for delete permission
+    booking.delete()
+    return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# ---------------------------------------------------------------
 # POST /api/bookings/travelers/<traveler_id>/id-proof/
 #
 # Booking creation is JSON-only (it carries a nested travelers array),
@@ -507,7 +542,7 @@ def booking_service_update(request, booking_id, service_id):
 @permission_classes([IsAuthenticated])
 def booking_invoice(request, booking_id):
     booking = get_object_or_404(
-        Booking.objects.select_related("user", "package", "package__destination").prefetch_related("travelers", "booking_services"),
+        Booking.objects.select_related("user", "package", "package__destination", "pickup_point").prefetch_related("travelers", "booking_services"),
         id=booking_id,
     )
     if not _can_view_booking(request.user, booking):
@@ -541,6 +576,11 @@ def booking_invoice(request, booking_id):
                 })
         except Exception:
             pass
+    pickup = None
+    if booking.pickup_point:
+        pickup = {"id": booking.pickup_point.id, "city": booking.pickup_point.city, "name": booking.pickup_point.name, "address": booking.pickup_point.address, "latitude": str(booking.pickup_point.latitude) if booking.pickup_point.latitude else None, "longitude": str(booking.pickup_point.longitude) if booking.pickup_point.longitude else None}
+    elif booking.pickup_point_name:
+        pickup = {"name": booking.pickup_point_name}
     return Response({
         "booking_id": booking.id,
         "booking_reference": booking.booking_reference,
@@ -556,6 +596,7 @@ def booking_invoice(request, booking_id):
         "total_amount": str(booking.total_amount),
         "payment_status": booking.payment_status,
         "booking_status": booking.booking_status,
+        "pickup_point": pickup,
         "customer": {"username": booking.user.username, "email": booking.user.email, "phone": getattr(booking.user, 'phone', '')},
         "created_at": booking.created_at,
     })

@@ -116,6 +116,22 @@ export default function PackageDetails() {
               {isIndependent && pkg.best_time_to_visit && <p style={{ marginTop: 8, color: "#0f7a6c", fontWeight: 600 }}>🗓 Best time to visit: {pkg.best_time_to_visit}</p>}
             </section>
 
+            {!isIndependent && pkg.pickup_points && pkg.pickup_points.length > 0 && (
+              <section className="pkg-details__section">
+                <h2>📍 Pickup Points — We Bring You With Us</h2>
+                <p style={{ color: "#64748b", fontSize: "0.88rem", marginBottom: 12 }}>For group tours we manage all travel from pickup point onwards. Choose nearest hub at booking — use your location for suggestion.</p>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(180px,1fr))", gap: 10 }}>
+                  {pkg.pickup_points.map((pp) => (
+                    <div key={pp.id} style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 12, background: "#f8fafc" }}>
+                      <div style={{ fontWeight: 800, fontSize: "0.95rem", color: "#0f172a" }}>{pp.city}</div>
+                      <div style={{ fontSize: "0.88rem", color: "#475569" }}>{pp.name}</div>
+                      {pp.address && <div style={{ fontSize: "0.78rem", color: "#64748b", marginTop: 4 }}>{pp.address}</div>}
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
             {isIndependent && pkg.price_breakdown && (
               <section className="pkg-details__section">
                 <h2>Services & Price Breakdown</h2>

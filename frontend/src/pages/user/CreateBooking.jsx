@@ -23,6 +23,13 @@ export default function CreateBooking() {
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  // Pickup points for group tours
+  const [pickupPoints, setPickupPoints] = useState([]);
+  const [selectedPickup, setSelectedPickup] = useState("");
+  const [nearestPickup, setNearestPickup] = useState(null);
+  const [locating, setLocating] = useState(false);
+  const [userCoords, setUserCoords] = useState(null);
+
   useEffect(() => {
     if (!packageId) {
       setLoadError("No package was selected. Please go back and choose a package to book.");
@@ -31,7 +38,20 @@ export default function CreateBooking() {
     }
     packageApi
       .get(packageId)
-      .then((data) => setPkg(data))
+      .then((data) => {
+        setPkg(data);
+        // fetch pickup points for group tours
+        if (data.trip_type === "group_tour" || data.pickup_points) {
+          packageApi.pickupPoints(data.id).then((pp) => {
+            setPickupPoints(pp.pickup_points || []);
+            if (pp.nearest) setNearestPickup(pp.nearest);
+          }).catch(() => {});
+          // also preload from detail if available
+          if (data.pickup_points && data.pickup_points.length) {
+            setPickupPoints(data.pickup_points);
+          }
+        }
+      })
       .catch(() => setLoadError("Couldn't load this package."))
       .finally(() => setIsLoading(false));
   }, [packageId]);
@@ -68,6 +88,33 @@ export default function CreateBooking() {
     setTravelers(travelers.filter((_, i) => i !== index));
   };
 
+  const handleUseLocation = () => {
+    if (!navigator.geolocation) {
+      setError("Geolocation is not supported by your browser.");
+      return;
+    }
+    setLocating(true);
+    setError("");
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        setUserCoords({ lat, lng });
+        packageApi.pickupPoints(pkg.id, { lat, lng }).then((pp) => {
+          setPickupPoints(pp.pickup_points || []);
+          if (pp.nearest) {
+            setSelectedPickup(String(pp.nearest.id));
+            setNearestPickup(pp.nearest);
+          }
+        }).catch(() => setError("Couldn't fetch nearest pickup points.")).finally(() => setLocating(false));
+      },
+      (err) => {
+        setError("Location access denied: " + err.message);
+        setLocating(false);
+      }
+    );
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError("");
@@ -91,6 +138,7 @@ export default function CreateBooking() {
         special_requests: specialRequests,
         travelers: travelers.map((t) => ({ ...t, age: Number(t.age) })),
       };
+      if (selectedPickup) payload.pickup_point = Number(selectedPickup);
       const booking = await bookingApi.create(payload);
       navigate(`/my-bookings/${booking.id}`);
     } catch (err) {
@@ -145,6 +193,36 @@ export default function CreateBooking() {
                 </>
               )}
             </div>
+            {(pkg.trip_type === "group_tour" || pickupPoints.length > 0) && pickupPoints.length > 0 && (
+              <div className="form-group" style={{ marginTop: 12, borderTop: "1px solid #e2e8f0", paddingTop: 12 }}>
+                <label className="form-label">Pickup Point — We bring you with us</label>
+                <p style={{ fontSize: "0.85rem", color: "#64748b", margin: "0 0 8px" }}>Choose your nearest city pickup point. Use your location to get suggestion.</p>
+                <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+                  <button type="button" className="btn btn-outline" onClick={handleUseLocation} disabled={locating} style={{ fontSize: "0.85rem" }}>
+                    {locating ? "Locating..." : "📍 Use my location (Suggest nearest)"}
+                  </button>
+                  {userCoords && <span style={{ fontSize: "0.78rem", color: "#0f7a6c", alignSelf: "center" }}>Lat {userCoords.lat.toFixed(4)}, Lng {userCoords.lng.toFixed(4)}</span>}
+                </div>
+                {nearestPickup && (
+                  <div style={{ background: "#e6f5f2", border: "1px solid #0f7a6c", borderRadius: 10, padding: "8px 12px", marginBottom: 10, fontSize: "0.9rem" }}>
+                    <strong>Nearest suggested:</strong> {nearestPickup.city} — {nearestPickup.name} {nearestPickup.distance_km ? `· ${nearestPickup.distance_km} km away` : ""} {nearestPickup.address ? `· ${nearestPickup.address}` : ""}
+                  </div>
+                )}
+                <select className="form-select" value={selectedPickup} onChange={(e) => setSelectedPickup(e.target.value)}>
+                  <option value="">Select pickup point (optional)</option>
+                  {pickupPoints.map((pp) => (
+                    <option key={pp.id} value={pp.id}>
+                      {pp.city} — {pp.name} {pp.distance_km ? `(${pp.distance_km} km)` : ""} {pp.address ? `· ${pp.address}` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+            {pkg.trip_type === "group_tour" && pickupPoints.length === 0 && pkg.pickup_location && (
+              <div style={{ marginTop: 12, background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 10, padding: "8px 12px", fontSize: "0.88rem", color: "#475569" }}>
+                <strong>Pickup:</strong> {pkg.pickup_location} — our team manages the trip from pickup point onwards.
+              </div>
+            )}
             <div className="form-group">
               <label className="form-label" htmlFor="special_requests">Special Requests (optional)</label>
               <textarea

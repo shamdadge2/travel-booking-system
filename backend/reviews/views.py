@@ -1,3 +1,5 @@
+from datetime import date
+
 from django.db import IntegrityError
 from django.shortcuts import get_object_or_404
 from rest_framework import status
@@ -6,6 +8,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 from accounts.permissions import is_staff_or_admin
+from bookings.models import Booking
 from packages.models import TourPackage
 
 from .models import Review
@@ -57,6 +60,42 @@ def package_review_list_create(request, package_id):
     if Review.objects.filter(booking=booking).exists():
         return Response(
             {"detail": "You have already reviewed this booking."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # ---- NEW: only allow review when trip is completed ----
+    # Group & independent same rule: you must have completed your trip.
+    # Requires: trip date has passed, not cancelled, and booking is in a completed/confirmed state.
+    if booking.booking_status == Booking.BookingStatus.CANCELLED:
+        return Response(
+            {"detail": "You can only review completed trips — this booking was cancelled."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    if booking.travel_date > date.today():
+        return Response(
+            {"detail": "You can only review after your travel date ({}) has passed. Your trip hasn't completed yet.".format(booking.travel_date)},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    # Auto-complete past confirmed bookings so user isn't blocked by admin delay
+    if booking.travel_date <= date.today() and booking.booking_status in (
+        Booking.BookingStatus.CONFIRMED,
+        Booking.BookingStatus.FULLY_CONFIRMED,
+        Booking.BookingStatus.PARTIALLY_CONFIRMED,
+        Booking.BookingStatus.SERVICES_BEING_ARRANGED,
+    ) and booking.payment_status == Booking.PaymentStatus.PAID:
+        # mark completed silently
+        try:
+            booking.booking_status = Booking.BookingStatus.COMPLETED
+            booking.save(update_fields=["booking_status", "updated_at"])
+        except Exception:
+            pass
+    if booking.booking_status not in (
+        Booking.BookingStatus.COMPLETED,
+        Booking.BookingStatus.CONFIRMED,
+        Booking.BookingStatus.FULLY_CONFIRMED,
+    ):
+        return Response(
+            {"detail": "You can only review after your trip is marked as completed. Current status is '{}' — please ensure travel is finished and booking is confirmed.".format(booking.booking_status)},
             status=status.HTTP_400_BAD_REQUEST,
         )
 

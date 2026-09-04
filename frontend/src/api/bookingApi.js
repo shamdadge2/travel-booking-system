@@ -10,6 +10,8 @@ const bookingApi = {
   stats: () => api.get("/bookings/stats/").then((res) => res.data),
   updateBookingService: (bookingId, serviceId, payload) => api.patch(`/bookings/${bookingId}/services/${serviceId}/`, payload).then((res) => res.data),
 
+  remove: (id) => api.delete(`/bookings/${id}/delete/`).then((res) => res.data),
+
   uploadTravelerIdProof: (travelerId, file) => {
     const formData = new FormData();
     formData.append("id_proof", file);

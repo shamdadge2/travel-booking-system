@@ -12,6 +12,7 @@ from .models import (
     PackageInclusion,
     PackageService,
     PackageTravelDate,
+    PickupPoint,
     TourPackage,
     TravelService,
 )
@@ -93,13 +94,14 @@ class TourPackageAdmin(admin.ModelAdmin):
     date_hierarchy = "created_at"
     prepopulated_fields = {"slug": ("title",)}
     autocomplete_fields = ("destination", "created_by")
+    filter_horizontal = ("pickup_points",)
     readonly_fields = ("created_at", "updated_at")
     list_per_page = 25
 
     fieldsets = (
         (None, {"fields": ("title", "slug", "destination", "trip_type", "status", "is_featured")}),
         ("Description", {"fields": ("short_description", "description")}),
-        ("Duration & Dates", {"fields": ("duration_days", "duration_nights", "start_date", "end_date", "pickup_location", "best_time_to_visit", "category")}),
+        ("Duration & Dates", {"fields": ("duration_days", "duration_nights", "start_date", "end_date", "pickup_location", "pickup_points", "best_time_to_visit", "category")}),
         ("Pricing & Capacity", {"fields": ("price", "discount_price", "service_fee", "max_travelers", "available_slots")}),
         ("Classification", {"fields": ("package_type", "difficulty", "featured_image")}),
         ("Ownership", {"fields": ("created_by",)}),
@@ -137,3 +139,13 @@ class CouponAdmin(admin.ModelAdmin):
 class PackageTravelDateAdmin(admin.ModelAdmin):
     list_display = ("id", "package", "travel_date", "status", "available_slots")
     list_filter = ("status",)
+
+
+@admin.register(PickupPoint)
+class PickupPointAdmin(admin.ModelAdmin):
+    list_display = ("id", "city", "name", "address", "latitude", "longitude", "is_active", "created_at")
+    list_filter = ("city", "is_active")
+    search_fields = ("city", "name", "address")
+    list_editable = ("is_active",)
+    ordering = ("city", "name")
+    list_per_page = 25

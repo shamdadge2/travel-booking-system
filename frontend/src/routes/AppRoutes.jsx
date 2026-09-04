@@ -34,6 +34,7 @@ import Dashboard from "../pages/admin/Dashboard";
 import AdminUsers from "../pages/admin/Users";
 import AdminDestinations from "../pages/admin/Destinations";
 import AdminPackages from "../pages/admin/Packages";
+import AdminPickupPoints from "../pages/admin/PickupPoints";
 import AdminServices from "../pages/admin/Services";
 import AdminCoupons from "../pages/admin/Coupons";
 import AdminItineraries from "../pages/admin/Itineraries";
@@ -81,6 +82,7 @@ export default function AppRoutes() {
           <Route path="users" element={<AdminUsers />} />
           <Route path="destinations" element={<AdminDestinations />} />
           <Route path="packages" element={<AdminPackages />} />
+          <Route path="pickup-points" element={<AdminPickupPoints />} />
           <Route path="services" element={<AdminServices />} />
           <Route path="coupons" element={<AdminCoupons />} />
           <Route path="itineraries" element={<AdminItineraries />} />
