@@ -32,6 +32,29 @@ export default function AuthProvider({ children }) {
       .finally(() => setIsInitializing(false));
   }, []);
 
+  // Single-device admin: poll session every 30s so old device auto-logs out
+  // without waiting for user to make a request. Only for admin/staff.
+  useEffect(() => {
+    if (!user || !(user.role === "admin" || user.role === "staff")) return;
+    const id = setInterval(() => {
+      authApi
+        .getProfile()
+        .then((profile) => setUser(profile))
+        .catch((err) => {
+          const code = err.response?.data?.code;
+          const detail = err.response?.data?.detail || "";
+          if (code === "session_expired" || detail.includes("logged in elsewhere")) {
+            try {
+              localStorage.setItem("session_expired", "1");
+            } catch {}
+            clearTokens();
+            setUser(null);
+          }
+        });
+    }, 30000);
+    return () => clearInterval(id);
+  }, [user]);
+
   const login = async (credentials) => {
     setIsLoading(true);
     try {

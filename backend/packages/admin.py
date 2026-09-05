@@ -103,6 +103,7 @@ class TourPackageAdmin(admin.ModelAdmin):
         ("Description", {"fields": ("short_description", "description")}),
         ("Duration & Dates", {"fields": ("duration_days", "duration_nights", "start_date", "end_date", "pickup_location", "pickup_points", "best_time_to_visit", "category")}),
         ("Pricing & Capacity", {"fields": ("price", "discount_price", "service_fee", "max_travelers", "available_slots")}),
+        ("Independent Extra Info", {"fields": ("independent_highlights", "travel_requirements", "flexibility_note"), "description": "Only displayed for independent packages (trip_type = independent_package). Leave blank for group tours."}),
         ("Classification", {"fields": ("package_type", "difficulty", "featured_image")}),
         ("Ownership", {"fields": ("created_by",)}),
         ("Timestamps", {"fields": ("created_at", "updated_at")}),

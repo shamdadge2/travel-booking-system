@@ -274,6 +274,9 @@ class TourPackageListSerializer(serializers.ModelSerializer):
             "service_fee",
             "best_time_to_visit",
             "category",
+            "independent_highlights",
+            "travel_requirements",
+            "flexibility_note",
             "created_at",
         ]
 
@@ -437,6 +440,9 @@ class TourPackageWriteSerializer(serializers.ModelSerializer):
             "service_fee",
             "best_time_to_visit",
             "category",
+            "independent_highlights",
+            "travel_requirements",
+            "flexibility_note",
             "inclusions",
             "exclusions",
             "activities",

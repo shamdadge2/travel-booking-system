@@ -32,6 +32,11 @@ class Destination(models.Model):
         validators=[MinValueValidator(-180), MaxValueValidator(180)],
     )
     is_active = models.BooleanField(default=True)
+    is_featured = models.BooleanField(
+        default=False,
+        db_index=True,
+        help_text="If checked, this destination will appear on the homepage featured section. Otherwise it only appears on the All Destinations page.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -42,6 +47,7 @@ class Destination(models.Model):
             models.Index(fields=["country"]),
             models.Index(fields=["city"]),
             models.Index(fields=["is_active"]),
+            models.Index(fields=["is_featured"]),
         ]
 
     def __str__(self):

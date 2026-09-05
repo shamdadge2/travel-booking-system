@@ -28,21 +28,37 @@ from .serializers import (
 User = get_user_model()
 
 
+def _is_admin_session_user(user):
+    return bool(
+        user
+        and (
+            getattr(user, "is_admin_role", False)
+            or getattr(user, "is_staff_role", False)
+            or user.is_staff
+            or user.is_superuser
+            or getattr(user, "role", None) in ("admin", "staff")
+        )
+    )
+
+
 def _tokens_for_user(user):
     """
     Build an access/refresh token pair for `user`, embedding a few
     useful custom claims (role, username, email) directly on both
     tokens so the frontend can read them without an extra API call.
+    Also embeds `session_version` for single-device admin enforcement.
     """
     refresh = RefreshToken.for_user(user)
     refresh["username"] = user.username
     refresh["email"] = user.email
     refresh["role"] = user.role
+    refresh["session_version"] = int(getattr(user, "session_version", 0) or 0)
 
     access = refresh.access_token
     access["username"] = user.username
     access["email"] = user.email
     access["role"] = user.role
+    access["session_version"] = int(getattr(user, "session_version", 0) or 0)
 
     return {
         "access": str(access),
@@ -109,6 +125,25 @@ def login_user(request):
             {"detail": "This account has been deactivated."},
             status=status.HTTP_403_FORBIDDEN,
         )
+
+    # Single-device enforcement for admin/staff: increment session_version
+    # so any previous device's tokens (old version) become invalid.
+    if _is_admin_session_user(user):
+        from django.db.models import F
+
+        User.objects.filter(id=user.id).update(session_version=F("session_version") + 1)
+        user.refresh_from_db(fields=["session_version"])
+        # Also blacklist outstanding refresh tokens for this user (defense in depth)
+        try:
+            from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, BlacklistedToken
+
+            for tok in OutstandingToken.objects.filter(user=user):
+                try:
+                    BlacklistedToken.objects.get_or_create(token=tok)
+                except Exception:
+                    pass
+        except Exception:
+            pass
 
     tokens = _tokens_for_user(user)
     return Response(
@@ -203,6 +238,22 @@ def google_login(request):
             status=status.HTTP_403_FORBIDDEN,
         )
 
+    if _is_admin_session_user(user):
+        from django.db.models import F
+
+        User.objects.filter(id=user.id).update(session_version=F("session_version") + 1)
+        user.refresh_from_db(fields=["session_version"])
+        try:
+            from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, BlacklistedToken
+
+            for tok in OutstandingToken.objects.filter(user=user):
+                try:
+                    BlacklistedToken.objects.get_or_create(token=tok)
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
     tokens = _tokens_for_user(user)
     return Response(
         {
@@ -219,6 +270,60 @@ def google_login(request):
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def refresh_token_view(request):
+    # Early version check for admin single-session before serializer blacklist check
+    # Use verify=False to read version even if token already blacklisted due to new login
+    raw_refresh = request.data.get("refresh")
+    if raw_refresh:
+        try:
+            from rest_framework_simplejwt.tokens import RefreshToken as RT
+            from rest_framework_simplejwt.tokens import UntypedToken
+
+            # Decode without verification to peek version; signature will be verified by serializer later
+            rt = RT(raw_refresh, verify=False)
+            user_id = rt.get("user_id")
+            token_version = rt.get("session_version")
+            if user_id is not None:
+                try:
+                    u = User.objects.get(id=user_id)
+                    if _is_admin_session_user(u):
+                        current = int(getattr(u, "session_version", 0) or 0)
+                        # token without version is treated as 0
+                        tv = token_version
+                        if tv is None:
+                            if current != 0:
+                                # old token, session changed
+                                try:
+                                    rt.blacklist()
+                                except Exception:
+                                    pass
+                                return Response(
+                                    {"detail": "Session expired — logged in elsewhere", "code": "session_expired"},
+                                    status=status.HTTP_401_UNAUTHORIZED,
+                                )
+                        else:
+                            try:
+                                if int(tv) != current:
+                                    try:
+                                        rt.blacklist()
+                                    except Exception:
+                                        pass
+                                    return Response(
+                                        {"detail": "Session expired — logged in elsewhere", "code": "session_expired"},
+                                        status=status.HTTP_401_UNAUTHORIZED,
+                                    )
+                            except (ValueError, TypeError):
+                                return Response(
+                                    {"detail": "Invalid session", "code": "session_expired"},
+                                    status=status.HTTP_401_UNAUTHORIZED,
+                                )
+                except User.DoesNotExist:
+                    pass
+        except TokenError:
+            # Let serializer handle invalid/expired/blacklisted token below
+            pass
+        except Exception:
+            pass
+
     serializer = TokenRefreshSerializer(data=request.data)
     try:
         serializer.is_valid(raise_exception=True)
@@ -230,7 +335,65 @@ def refresh_token_view(request):
     except Exception:
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    return Response(serializer.validated_data, status=status.HTTP_200_OK)
+    # Patch new access (and refresh if rotated) to carry correct session_version
+    # Serializer already verified and (if rotation) blacklisted old refresh.
+    try:
+        data = serializer.validated_data
+        # Ensure new tokens have correct version claim (serializer's new tokens may lack it)
+        # Decode and re-encode with correct version if needed
+        from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
+
+        if "access" in data:
+            try:
+                at = AccessToken(data["access"])
+                # Retrieve user from new access token itself
+                uid = at.get("user_id")
+                if uid is None and raw_refresh:
+                    try:
+                        rt_tmp = RefreshToken(raw_refresh, verify=False)
+                        uid = rt_tmp.get("user_id")
+                    except Exception:
+                        uid = None
+                if uid is not None:
+                    try:
+                        usr = User.objects.get(id=uid)
+                        at["session_version"] = int(getattr(usr, "session_version", 0) or 0)
+                        # Also ensure other custom claims persist
+                        if "username" not in at:
+                            at["username"] = usr.username
+                        if "role" not in at:
+                            at["role"] = usr.role
+                        data["access"] = str(at)
+                    except User.DoesNotExist:
+                        pass
+            except Exception:
+                pass
+        if "refresh" in data:
+            try:
+                nrt = RefreshToken(data["refresh"])
+                uid = nrt.get("user_id")
+                if uid is None and raw_refresh:
+                    try:
+                        rt_tmp = RefreshToken(raw_refresh, verify=False)
+                        uid = rt_tmp.get("user_id")
+                    except Exception:
+                        uid = None
+                if uid is not None:
+                    try:
+                        usr = User.objects.get(id=uid)
+                        nrt["session_version"] = int(getattr(usr, "session_version", 0) or 0)
+                        if "username" not in nrt:
+                            nrt["username"] = usr.username
+                        if "role" not in nrt:
+                            nrt["role"] = usr.role
+                        data["refresh"] = str(nrt)
+                    except User.DoesNotExist:
+                        pass
+            except Exception:
+                pass
+        return Response(data, status=status.HTTP_200_OK)
+    except Exception:
+        return Response(serializer.validated_data, status=status.HTTP_200_OK)
 
 
 # ---------------------------------------------------------------

@@ -12,11 +12,12 @@ class DestinationAdmin(admin.ModelAdmin):
         "state",
         "country",
         "is_active",
+        "is_featured",
         "created_at",
     )
     list_display_links = ("id", "name")
-    list_editable = ("is_active",)
-    list_filter = ("is_active", "country", "state")
+    list_editable = ("is_active", "is_featured")
+    list_filter = ("is_active", "is_featured", "country", "state")
     search_fields = ("name", "city", "state", "country", "description")
     ordering = ("-created_at",)
     date_hierarchy = "created_at"
@@ -24,7 +25,7 @@ class DestinationAdmin(admin.ModelAdmin):
     list_per_page = 25
 
     fieldsets = (
-        (None, {"fields": ("name", "description", "image", "is_active")}),
+        (None, {"fields": ("name", "description", "image", "is_active", "is_featured")}),
         ("Location", {"fields": ("country", "state", "city", "latitude", "longitude")}),
         ("Timestamps", {"fields": ("created_at", "updated_at")}),
     )

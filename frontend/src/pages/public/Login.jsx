@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import useAuth from "../../hooks/useAuth";
 import GoogleLoginButton from "../../components/GoogleLoginButton";
@@ -9,6 +9,15 @@ export default function Login() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({ username: "", password: "" });
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    try {
+      if (localStorage.getItem("session_expired") === "1") {
+        setError("Your session expired — you were logged in from another device. Please log in again.");
+        localStorage.removeItem("session_expired");
+      }
+    } catch {}
+  }, []);
 
   const handleChange = (event) => {
     setFormData({ ...formData, [event.target.name]: event.target.value });

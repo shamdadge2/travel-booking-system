@@ -5,7 +5,7 @@ import destinationApi from "../../api/destinationApi";
 import "./AdminTable.css";
 import "./AdminForm.css";
 
-const EMPTY_FORM = { name: "", city: "", state: "", country: "", description: "" };
+const EMPTY_FORM = { name: "", city: "", state: "", country: "", description: "", is_featured: false };
 
 export default function AdminDestinations() {
   const [destinations, setDestinations] = useState([]);
@@ -33,7 +33,8 @@ export default function AdminDestinations() {
   useEffect(load, []);
 
   const handleChange = (event) => {
-    setFormData({ ...formData, [event.target.name]: event.target.value });
+    const { name, value, type, checked } = event.target;
+    setFormData({ ...formData, [name]: type === "checkbox" ? checked : value });
   };
 
   const startCreate = () => {
@@ -54,6 +55,7 @@ export default function AdminDestinations() {
       state: destination.state || "",
       country: destination.country,
       description: destination.description || "",
+      is_featured: destination.is_featured || false,
     });
     setImageFile(null);
     setImagePreview(destination.image || "");
@@ -153,6 +155,14 @@ export default function AdminDestinations() {
           </div>
 
           <div className="form-group">
+            <label className="form-label">
+              <input type="checkbox" name="is_featured" checked={formData.is_featured} onChange={handleChange} style={{ marginRight: 8 }} />
+              Featured on Homepage
+            </label>
+            <p className="admin-form__note">If checked, this destination appears on the homepage “Explore Popular Destinations” section. Otherwise it only shows on the All Destinations page.</p>
+          </div>
+
+          <div className="form-group">
             <label className="form-label">Featured Image (shown on destination cards &amp; hero)</label>
             {imagePreview && !imageFile && (
               <div style={{ marginBottom: 8 }}>
@@ -202,6 +212,7 @@ export default function AdminDestinations() {
                   <th>City</th>
                   <th>Country</th>
                   <th>Status</th>
+                  <th>Featured</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -224,6 +235,7 @@ export default function AdminDestinations() {
                         {destination.is_active ? "Active" : "Inactive"}
                       </span>
                     </td>
+                    <td>{destination.is_featured ? "★ Featured" : "—"}</td>
                     <td className="admin-table__actions">
                       <button onClick={() => startEdit(destination)}>Edit</button>
                       <button className="danger" onClick={() => handleDelete(destination)}>Delete</button>

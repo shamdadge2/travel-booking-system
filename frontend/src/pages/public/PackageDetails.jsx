@@ -132,6 +132,32 @@ export default function PackageDetails() {
               </section>
             )}
 
+            {isIndependent && (
+              <>
+                {(pkg.independent_highlights || pkg.flexibility_note || pkg.travel_requirements) && (
+                  <section className="pkg-details__section">
+                    <h2>✨ Independent Package — More Info</h2>
+                    <p style={{ color: "#64748b", fontSize: "0.88rem", marginBottom: 12 }}>We Arrange Your Trip — extra flexibility and details for independent travelers.</p>
+                    {pkg.flexibility_note && <div style={{ background: "#e6f5f2", border: "1px solid #0f7a6c", borderRadius: 10, padding: "10px 14px", marginBottom: 10, fontSize: "0.92rem", color: "#0f172a" }}><strong>Flexibility:</strong> {pkg.flexibility_note}</div>}
+                    {pkg.independent_highlights && (
+                      <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 14, background: "#f8fafc", marginBottom: 10 }}>
+                        <h4 style={{ margin: "0 0 8px", fontSize: "0.95rem", color: "#0f172a" }}>Highlights</h4>
+                        <p style={{ margin: 0, whiteSpace: "pre-wrap", fontSize: "0.92rem", color: "#475569" }}>{pkg.independent_highlights}</p>
+                      </div>
+                    )}
+                    {pkg.travel_requirements && (
+                      <div style={{ border: "1px solid #fee2e2", borderRadius: 12, padding: 14, background: "#fff5f5" }}>
+                        <h4 style={{ margin: "0 0 8px", fontSize: "0.95rem", color: "#991b1b" }}>Travel Requirements</h4>
+                        <p style={{ margin: 0, whiteSpace: "pre-wrap", fontSize: "0.92rem", color: "#475569" }}>{pkg.travel_requirements}</p>
+                      </div>
+                    )}
+                    {pkg.best_time_to_visit && <p style={{ marginTop: 8, color: "#0f7a6c", fontWeight: 600 }}>🗓 Best time to visit: {pkg.best_time_to_visit}</p>}
+                    {pkg.category && <p style={{ marginTop: 4, color: "#64748b", fontSize: "0.88rem" }}>Category: {pkg.category}</p>}
+                  </section>
+                )}
+              </>
+            )}
+
             {isIndependent && pkg.price_breakdown && (
               <section className="pkg-details__section">
                 <h2>Services & Price Breakdown</h2>

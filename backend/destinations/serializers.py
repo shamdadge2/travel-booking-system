@@ -19,6 +19,7 @@ class DestinationSerializer(serializers.ModelSerializer):
             "latitude",
             "longitude",
             "is_active",
+            "is_featured",
             "full_location",
             "created_at",
             "updated_at",

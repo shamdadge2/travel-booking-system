@@ -105,6 +105,20 @@ class TourPackage(models.Model):
     )
     best_time_to_visit = models.CharField(max_length=255, blank=True, help_text="e.g. 'October to March'")
     category = models.CharField(max_length=100, blank=True, help_text="Optional category for independent packages")
+    # Extra info specifically for independent packages (shown only when trip_type=independent)
+    independent_highlights = models.TextField(
+        blank=True,
+        help_text="Highlights for independent packages — e.g., 'Private vehicle, flexible dates, 24/7 support'. Shown only on independent detail pages.",
+    )
+    travel_requirements = models.TextField(
+        blank=True,
+        help_text="Travel requirements for independent packages — e.g., passport, visa, health. Leave blank to hide.",
+    )
+    flexibility_note = models.CharField(
+        max_length=500,
+        blank=True,
+        help_text="Short flexibility note for independent — e.g., 'Choose your own travel dates & hotel tier'.",
+    )
 
     # Group tour pickup points (big cities as hubs)
     pickup_points = models.ManyToManyField(

@@ -59,6 +59,11 @@ def get_destinations(request):
             | Q(description__icontains=search)
         )
 
+    # Featured filter for homepage: ?is_featured=true
+    is_featured_param = request.query_params.get("is_featured")
+    if is_featured_param is not None:
+        queryset = queryset.filter(is_featured=is_featured_param.lower() in ("1", "true", "yes"))
+
     country = request.query_params.get("country")
     if country:
         queryset = queryset.filter(country__iexact=country)

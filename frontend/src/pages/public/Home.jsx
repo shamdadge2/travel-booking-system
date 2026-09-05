@@ -23,7 +23,7 @@ export default function Home() {
     setDestError("");
     setPkgError("");
     Promise.allSettled([
-      destinationApi.list({ page_size: 8, ordering: "-created_at" }),
+      destinationApi.list({ page_size: 8, is_featured: true, ordering: "-created_at" }),
       packageApi.featured({ page_size: 6 }),
     ]).then((results) => {
       const [destResult, pkgResult] = results;

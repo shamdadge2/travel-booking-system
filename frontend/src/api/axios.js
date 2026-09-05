@@ -49,6 +49,17 @@ api.interceptors.response.use(
       return Promise.reject(error);
     }
 
+    // Single-device admin: if server says session expired, don't try refresh — logout immediately
+    const errCode = error.response?.data?.code;
+    const errDetail = error.response?.data?.detail || "";
+    if (errCode === "session_expired" || errDetail.includes("logged in elsewhere")) {
+      try {
+        localStorage.setItem("session_expired", "1");
+      } catch {}
+      clearTokens();
+      return Promise.reject(error);
+    }
+
     // Don't try to refresh on the auth endpoints themselves.
     if (originalRequest.url?.includes("/auth/login/") || originalRequest.url?.includes("/auth/refresh/")) {
       return Promise.reject(error);
@@ -84,6 +95,14 @@ api.interceptors.response.use(
       return api(originalRequest);
     } catch (refreshError) {
       resolveQueue(refreshError, null);
+      // Single-device admin: if session expired (logged in elsewhere), flag for login page
+      const code = refreshError.response?.data?.code;
+      const detail = refreshError.response?.data?.detail || "";
+      if (code === "session_expired" || detail.includes("logged in elsewhere")) {
+        try {
+          localStorage.setItem("session_expired", "1");
+        } catch {}
+      }
       clearTokens();
       return Promise.reject(refreshError);
     } finally {

@@ -33,6 +33,10 @@ class User(AbstractUser):
         choices=Role.choices,
         default=Role.CUSTOMER,
     )
+    # For single-device admin sessions: incremented on each admin login.
+    # Tokens carry `session_version`; mismatch => logged in elsewhere.
+    session_version = models.PositiveIntegerField(default=0)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

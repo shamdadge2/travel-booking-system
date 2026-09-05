@@ -35,6 +35,9 @@ const EMPTY_FORM = {
   service_fee: "0",
   best_time_to_visit: "",
   category: "",
+  independent_highlights: "",
+  travel_requirements: "",
+  flexibility_note: "",
 };
 
 // Accepts either ["item text", ...] or [{item: "text"}, ...] — ChatGPT
@@ -384,6 +387,7 @@ export default function AdminPackages() {
       "duration_days", "duration_nights", "price", "discount_price",
       "max_travelers", "available_slots", "package_type", "trip_type", "difficulty",
       "start_date", "end_date", "pickup_location", "service_fee", "best_time_to_visit", "category",
+      "independent_highlights", "travel_requirements", "flexibility_note",
     ];
     const updates = {};
     TEXT_FIELDS.forEach((field) => {
@@ -444,6 +448,9 @@ export default function AdminPackages() {
       service_fee: full.service_fee || "0",
       best_time_to_visit: full.best_time_to_visit || "",
       category: full.category || "",
+      independent_highlights: full.independent_highlights || "",
+      travel_requirements: full.travel_requirements || "",
+      flexibility_note: full.flexibility_note || "",
     });
     setInclusions(full.inclusions.map((i) => ({ item: i.item })));
     setExclusions(full.exclusions.map((e) => ({ item: e.item })));
@@ -683,10 +690,27 @@ export default function AdminPackages() {
             </div>
           </div>
           {formData.trip_type === "independent_package" && (
-            <div className="form-group">
-              <label className="form-label">Package Category</label>
-              <input name="category" className="form-input" placeholder="e.g. Kashmir Explorer" value={formData.category} onChange={handleChange} />
-              <p className="admin-form__note">For independent packages, service breakdown will be used to compute final price (services + fee). Price field above is fallback.</p>
+            <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 16, background: "#f8fafc", marginBottom: 16 }}>
+              <h4 style={{ margin: "0 0 12px", color: "#0f172a" }}>Independent Package — More Info</h4>
+              <p className="admin-form__note" style={{ marginBottom: 12 }}>These fields appear only for independent packages (We Arrange Your Trip). They give travelers extra context on what we handle vs group tours where we bring them with us.</p>
+              <div className="form-group">
+                <label className="form-label">Package Category</label>
+                <input name="category" className="form-input" placeholder="e.g. Kashmir Explorer" value={formData.category} onChange={handleChange} />
+                <p className="admin-form__note">For independent packages, service breakdown will be used to compute final price (services + fee). Price field above is fallback.</p>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Highlights (independent)</label>
+                <textarea name="independent_highlights" rows="3" className="form-textarea" placeholder="e.g. Private vehicle throughout, flexible dates, handpicked hotels, 24/7 support" value={formData.independent_highlights} onChange={handleChange} />
+                <p className="admin-form__note">Shown as bullet highlights on independent package detail page.</p>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Flexibility Note</label>
+                <input name="flexibility_note" className="form-input" placeholder="e.g. Choose your own travel dates & hotel tier" value={formData.flexibility_note} onChange={handleChange} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Travel Requirements</label>
+                <textarea name="travel_requirements" rows="3" className="form-textarea" placeholder="e.g. Passport required, visa assistance provided, health insurance recommended" value={formData.travel_requirements} onChange={handleChange} />
+              </div>
             </div>
           )}
 
